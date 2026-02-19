@@ -19,8 +19,6 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.1.6",
     "oxlint": "^1.48.0",
     "tailwindcss": "^4",
     "typescript": "^5"
