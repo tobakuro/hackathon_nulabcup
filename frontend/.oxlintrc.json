@@ -53,7 +53,7 @@
     "@typescript-eslint/no-unsafe-declaration-merging": "error",
     "@typescript-eslint/no-unsafe-function-type": "error",
     "no-unused-expressions": "warn",
-    "no-unused-vars": "warn",
+    "no-unused-vars": "error",
     "@typescript-eslint/no-wrapper-object-types": "error",
     "@typescript-eslint/prefer-as-const": "error",
     "@typescript-eslint/prefer-namespace-keyword": "error",
