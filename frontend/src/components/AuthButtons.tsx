@@ -1,5 +1,6 @@
 import { signIn, signOut, auth } from "@/auth";
 import Image from "next/image";
+import { SubmitButton, SignOutButton } from "./SubmitButtons";
 
 export default async function AuthButtons() {
     const session = await auth();
@@ -25,12 +26,7 @@ export default async function AuthButtons() {
                         await signOut();
                     }}
                 >
-                    <button
-                        type="submit"
-                        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
-                    >
-                        ログアウト
-                    </button>
+                    <SignOutButton />
                 </form>
 
             </div>
@@ -46,12 +42,7 @@ export default async function AuthButtons() {
                     await signIn("github");
                 }}
             >
-                <button
-                    type="submit"
-                    className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition"
-                >
-                    GitHubでログイン
-                </button>
+                <SubmitButton />
             </form>
         </div>
     );
