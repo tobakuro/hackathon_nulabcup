@@ -8,17 +8,3 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
-CREATE TABLE IF NOT EXISTS match_histories (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    room_id UUID NOT NULL,
-    player1_id UUID NOT NULL REFERENCES users(id),
-    player2_id UUID NOT NULL REFERENCES users(id),
-    winner_id UUID REFERENCES users(id),
-    gnu_diff INT NOT NULL DEFAULT 0,
-    played_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_match_histories_player1 ON match_histories(player1_id);
-CREATE INDEX IF NOT EXISTS idx_match_histories_player2 ON match_histories(player2_id);
-CREATE INDEX IF NOT EXISTS idx_match_histories_room ON match_histories(room_id);

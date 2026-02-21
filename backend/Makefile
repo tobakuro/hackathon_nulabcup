@@ -1,4 +1,4 @@
-.PHONY: build run sqlc-generate migrate
+.PHONY: build run sqlc-generate tidy
 
 build:
 	go build -o bin/server ./cmd/server
