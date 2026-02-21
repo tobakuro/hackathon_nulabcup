@@ -19,6 +19,6 @@ CREATE TABLE IF NOT EXISTS match_histories (
     played_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_match_histories_player1 ON match_histories(player1_id);
-CREATE INDEX idx_match_histories_player2 ON match_histories(player2_id);
-CREATE INDEX idx_match_histories_room ON match_histories(room_id);
+CREATE INDEX IF NOT EXISTS idx_match_histories_player1 ON match_histories(player1_id);
+CREATE INDEX IF NOT EXISTS idx_match_histories_player2 ON match_histories(player2_id);
+CREATE INDEX IF NOT EXISTS idx_match_histories_room ON match_histories(room_id);
