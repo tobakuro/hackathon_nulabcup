@@ -8,11 +8,12 @@ export function SubmitButton() {
         <button
             type="submit"
             disabled={pending}
+            aria-busy={pending}
             className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
             {pending ? (
                 <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div aria-hidden="true" className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     読み込み中...
                 </>
             ) : (
@@ -29,11 +30,12 @@ export function SignOutButton() {
         <button
             type="submit"
             disabled={pending}
+            aria-busy={pending}
             className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
             {pending ? (
                 <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div aria-hidden="true" className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     処理中...
                 </>
             ) : (
