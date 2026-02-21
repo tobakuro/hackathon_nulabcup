@@ -10,7 +10,7 @@
 | DB | PostgreSQL |
 | インメモリDB | Redis (マッチングキュー・ルーム状態管理) |
 | 認証 | GitHub OAuth (NextAuth.js) |
-| LLM | Gemini API |
+| LLM | Gemini API (Next.js API Routes経由) |
 
 ## システム構成図
 
@@ -20,21 +20,62 @@
     | HTTP (REST)   WebSocket
     v
 [Next.js Frontend]
+    |--- [GitHub API]  (OAuthトークンで自分のリポジトリ・コード取得)
+    |--- [Gemini API]  (API Routes経由でコード分析・問題生成)
     |
-    | HTTP / WS
+    | HTTP / WS (マッチング・スコア・相手の問題共有)
     v
 [Go Backend]
     |--- [PostgreSQL] (ユーザー情報・対戦履歴)
     |--- [Redis]      (マッチングキュー・ルーム状態)
-    |--- [GitHub API] (リポジトリ・コードフェッチ)
-    |--- [LLM API]    (問題生成)
 ```
 
 ## 主要な処理フロー
 
-1. ユーザーがGitHub OAuthでログイン
+1. ユーザーがGitHub OAuthでログイン（NextAuth.js）
 2. マッチングキュー（Redis）に入る
 3. 対戦相手が見つかったら、ゲームルームをRedisに生成
-4. サーバーがGitHub APIからコードを取得し、LLMで4択問題を生成（並行処理）
-5. WebSocket経由で問題を配信し、ゲームループ開始
-6. 試合終了後、ヌーをPostgreSQLに保存
+4. **各プレイヤーのフロントエンドが独立して**、自分のGitHubリポジトリからコードを取得
+5. **Next.js API Routes経由でGemini APIを呼び**、自分のコードを分析・問題を生成
+6. 生成した問題はWebSocket経由で相手にも共有（観戦・比較用）
+7. 各プレイヤーは**自分のGitHub履歴から生成された問題**を解く（問題は対戦相手と一致しない）
+8. 回答結果・スコアをWebSocket経由でリアルタイム同期
+9. 試合終了後、結果をPostgreSQLに保存
+
+## ゲームデザイン上の特徴
+
+- **問題はプレイヤー個人のGitHub履歴から生成**されるため、対戦相手と同じ問題にはならない
+- 相手が解いている問題は画面上で確認可能（透明性・観戦体験）
+- フロントエンドがGitHub API・Gemini API連携を担うことで、GoバックエンドはゲームロジックとDB管理に集中できる
+
+## コードサマリーのキャッシュ戦略
+
+ゲーム中の問題生成を高速化するため、事前にGitHub APIでコードを取得・分析しMDとしてキャッシュしておく。
+
+### 処理フェーズ
+
+```
+【事前準備フェーズ（ログイン後・マッチング前）】
+  1. GitHubトークンでリポジトリのコードを取得
+  2. Next.js API Routes → Gemini APIでコードを分析
+  3. 「コードサマリーMD」を生成・キャッシュ
+
+【ゲーム中フェーズ】
+  4. キャッシュ済みMDをGeminiに渡して問題を生成（GitHub API呼び出し不要）
+  5. 問題をWebSocket経由で相手に共有
+```
+
+### キャッシュ実装の段階的移行
+
+| フェーズ | 保存先 | 概要 |
+|---|---|---|
+| フェーズ1（初期実装） | sessionStorage | 実装コストが低い。タブを閉じると消えるがゲームセッション中は保持される |
+| フェーズ2（UX改善） | PostgreSQL | ログイン時にDBからサマリーを取得し即ゲーム開始可能。`summary_updated_at` で鮮度管理 |
+
+### フェーズ2のDBスキーマ（予定）
+
+```sql
+-- users テーブルに追加、または別テーブルとして管理
+github_summary_md  TEXT       -- 生成されたコードサマリーMD
+summary_updated_at TIMESTAMP  -- 最終更新日時（古ければ再生成）
+```
