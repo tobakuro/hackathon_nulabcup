@@ -13,12 +13,9 @@
   "shell": {
     "init_hook": [
       "if [ ! -d \"$PGDATA\" ] || [ -z \"$(ls -A $PGDATA 2>/dev/null)\" ]; then echo 'Initializing PostgreSQL...'; initdb -D \"$PGDATA\"; fi",
-      "echo '環境準備完了。devbox services up でサービスを起動してください。'"
+      "if ! (pg_ctl status -D \"$PGDATA\" 2>/dev/null | grep -q 'server is running' && redis-cli ping 2>/dev/null | grep -q 'PONG'); then echo 'サービスを起動しています...'; devbox services up --background; fi"
     ],
     "scripts": {
-      "test": [
-        "echo \"Error: no test specified\" && exit 1"
-      ],
       "db:setup": [
         "if ! psql -lqt 2>/dev/null | cut -d '|' -f 1 | grep -qw hackathon; then createdb hackathon && echo 'Created database: hackathon'; else echo 'Database hackathon already exists'; fi",
         "psql hackathon -f backend/db/migrations/001_init.sql && echo 'Migration applied.'"
