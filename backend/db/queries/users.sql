@@ -10,4 +10,4 @@ VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: UpdateGnuBalance :exec
-UPDATE users SET gnu_balance = $2, updated_at = NOW() WHERE id = $1;
+UPDATE users SET gnu_balance = GREATEST(0, gnu_balance + $2), updated_at = NOW() WHERE id = $1;
