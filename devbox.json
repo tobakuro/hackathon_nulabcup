@@ -6,7 +6,9 @@
     "postgresql_18@18.2",
     "redis@8.2.3",
     "air@latest",
-    "golangci-lint@latest"
+    "golangci-lint@latest",
+    "sqlc@latest",
+    "go-migrate@latest"
   ],
   "shell": {
     "init_hook": [
