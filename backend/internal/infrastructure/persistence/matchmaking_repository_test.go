@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -12,13 +13,22 @@ import (
 
 func setupTestRedis(t *testing.T) *redis.Client {
 	t.Helper()
+	addr := os.Getenv("REDIS_TEST_ADDR")
+	if addr == "" {
+		addr = "localhost:6379"
+	}
 	rdb := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr: addr,
 		DB:   15, // use a dedicated DB for tests
 	})
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
 		t.Skip("Redis not available, skipping integration test")
 	}
+	t.Cleanup(func() {
+		if err := rdb.Close(); err != nil {
+			t.Logf("failed to close Redis client: %v", err)
+		}
+	})
 	return rdb
 }
 
@@ -26,7 +36,9 @@ func cleanupKeys(t *testing.T, rdb *redis.Client, keys ...string) {
 	t.Helper()
 	ctx := context.Background()
 	for _, k := range keys {
-		rdb.Del(ctx, k)
+		if err := rdb.Del(ctx, k).Err(); err != nil {
+			t.Errorf("failed to cleanup key %s: %v", k, err)
+		}
 	}
 }
 
@@ -52,8 +64,7 @@ func TestMatchmakingRepository_EnqueueAndDequeue(t *testing.T) {
 func TestMatchmakingRepository_Dequeue_Empty(t *testing.T) {
 	rdb := setupTestRedis(t)
 	defer cleanupKeys(t, rdb, matchmakingQueueKey)
-	// Ensure queue is empty
-	rdb.Del(context.Background(), matchmakingQueueKey)
+	cleanupKeys(t, rdb, matchmakingQueueKey)
 
 	repo := NewMatchmakingRepository(rdb)
 	ctx := context.Background()
@@ -67,7 +78,7 @@ func TestMatchmakingRepository_Dequeue_Empty(t *testing.T) {
 func TestMatchmakingRepository_Dequeue_OnlyOneInQueue(t *testing.T) {
 	rdb := setupTestRedis(t)
 	defer cleanupKeys(t, rdb, matchmakingQueueKey)
-	rdb.Del(context.Background(), matchmakingQueueKey)
+	cleanupKeys(t, rdb, matchmakingQueueKey)
 
 	repo := NewMatchmakingRepository(rdb)
 	ctx := context.Background()
@@ -141,7 +152,7 @@ func TestMatchmakingRepository_ClearActiveAndReSetActive(t *testing.T) {
 func TestMatchmakingRepository_Remove(t *testing.T) {
 	rdb := setupTestRedis(t)
 	defer cleanupKeys(t, rdb, matchmakingQueueKey)
-	rdb.Del(context.Background(), matchmakingQueueKey)
+	cleanupKeys(t, rdb, matchmakingQueueKey)
 
 	repo := NewMatchmakingRepository(rdb)
 	ctx := context.Background()

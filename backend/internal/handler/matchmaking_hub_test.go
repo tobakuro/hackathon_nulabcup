@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
@@ -27,8 +28,9 @@ func TestHub_RegisterAndUnregister(t *testing.T) {
 	hub.mu.RUnlock()
 	assert.True(t, exists, "connection should be registered")
 
-	// Unregister calls LeaveQueue internally, which needs usecase.
-	// Test map deletion directly instead.
+	// TODO: Unregister calls LeaveQueue internally, which requires a real or
+	// mocked MatchmakingUsecase. Refactor Hub to accept a usecase interface so
+	// we can inject a test double and call hub.Unregister(userID) directly.
 	hub.mu.Lock()
 	delete(hub.connections, userID)
 	hub.mu.Unlock()
@@ -46,14 +48,20 @@ func TestHub_SendToUser_WithConnection(t *testing.T) {
 
 	userID := uuid.New()
 
-	// Set up a real WebSocket connection via httptest
+	var upgradeErr error
+	var wg sync.WaitGroup
+	wg.Add(1)
+
 	upgrader := websocket.Upgrader{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			t.Fatalf("upgrade error: %v", err)
+			upgradeErr = err
+			wg.Done()
+			return
 		}
 		hub.Register(userID, conn)
+		wg.Done()
 	}))
 	defer server.Close()
 
@@ -61,6 +69,10 @@ func TestHub_SendToUser_WithConnection(t *testing.T) {
 	clientConn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	require.NoError(t, err)
 	defer clientConn.Close()
+
+	// Wait for server-side Register to complete before sending
+	wg.Wait()
+	require.NoError(t, upgradeErr, "WebSocket upgrade should succeed")
 
 	msg := WSMessage{
 		Type:    "ev_test",

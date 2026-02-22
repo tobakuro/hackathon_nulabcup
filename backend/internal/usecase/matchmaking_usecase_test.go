@@ -189,10 +189,15 @@ func TestTryMatch_QueueInsufficient(t *testing.T) {
 func TestTryMatch_GetPlayer1Fails(t *testing.T) {
 	p1ID := uuid.New()
 	p2ID := uuid.New()
+	var clearedIDs []uuid.UUID
 
 	mmRepo := &testutil.MockMatchmakingRepository{
 		DequeueFunc: func(_ context.Context) (uuid.UUID, uuid.UUID, error) {
 			return p1ID, p2ID, nil
+		},
+		ClearActiveFunc: func(_ context.Context, id uuid.UUID) error {
+			clearedIDs = append(clearedIDs, id)
+			return nil
 		},
 	}
 
@@ -208,16 +213,24 @@ func TestTryMatch_GetPlayer1Fails(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "get player1")
+	assert.Len(t, clearedIDs, 2, "ClearActive should be called for both players on error")
+	assert.Contains(t, clearedIDs, p1ID)
+	assert.Contains(t, clearedIDs, p2ID)
 }
 
 func TestTryMatch_GetPlayer2Fails(t *testing.T) {
 	p1ID := uuid.New()
 	p2ID := uuid.New()
 	player1 := &entity.User{ID: p1ID}
+	var clearedIDs []uuid.UUID
 
 	mmRepo := &testutil.MockMatchmakingRepository{
 		DequeueFunc: func(_ context.Context) (uuid.UUID, uuid.UUID, error) {
 			return p1ID, p2ID, nil
+		},
+		ClearActiveFunc: func(_ context.Context, id uuid.UUID) error {
+			clearedIDs = append(clearedIDs, id)
+			return nil
 		},
 	}
 
@@ -236,15 +249,23 @@ func TestTryMatch_GetPlayer2Fails(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "get player2")
+	assert.Len(t, clearedIDs, 2, "ClearActive should be called for both players on error")
+	assert.Contains(t, clearedIDs, p1ID)
+	assert.Contains(t, clearedIDs, p2ID)
 }
 
 func TestTryMatch_CreateRoomFails(t *testing.T) {
 	p1ID := uuid.New()
 	p2ID := uuid.New()
+	var clearedIDs []uuid.UUID
 
 	mmRepo := &testutil.MockMatchmakingRepository{
 		DequeueFunc: func(_ context.Context) (uuid.UUID, uuid.UUID, error) {
 			return p1ID, p2ID, nil
+		},
+		ClearActiveFunc: func(_ context.Context, id uuid.UUID) error {
+			clearedIDs = append(clearedIDs, id)
+			return nil
 		},
 	}
 
@@ -266,4 +287,7 @@ func TestTryMatch_CreateRoomFails(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "create room")
+	assert.Len(t, clearedIDs, 2, "ClearActive should be called for both players on error")
+	assert.Contains(t, clearedIDs, p1ID)
+	assert.Contains(t, clearedIDs, p2ID)
 }
