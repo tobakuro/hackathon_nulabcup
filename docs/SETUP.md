@@ -30,47 +30,28 @@ cd hackathon_nulabcup
 devbox shell
 ```
 
-初回はパッケージのダウンロードに時間がかかります。完了すると PostgreSQL のデータディレクトリが自動初期化されます。
+初回はパッケージのダウンロードに時間がかかります。完了すると以下が自動で実行されます：
 
-### 3. サービス起動（PostgreSQL・Redis）
+- PostgreSQL のデータディレクトリ初期化（`--no-locale --encoding=UTF8`）
+- PostgreSQL の起動（`pg_ctl` による直接起動）
+- `hackathon` データベース作成
+- マイグレーション適用（初回のみ）
 
-```bash
-devbox services up --background
-```
+2回目以降の `devbox shell` では既存の状態を検出してスキップするため、高速に起動します。
 
-devbox の [process-compose](https://www.jetify.com/devbox/docs/guides/services/) がPostgreSQLとRedisをバックグラウンドで起動・管理します。
-
-状態確認:
-```bash
-devbox services ls
-```
-
-停止:
-```bash
-devbox services stop
-```
-
-### 4. データベースのセットアップ
-
-```bash
-devbox run db:setup
-```
-
-`hackathon` データベースの作成とマイグレーションを実行します。
-
-### 5. フロントエンドの依存関係インストール
+### 3. フロントエンドの依存関係インストール
 
 ```bash
 devbox run frontend:install
 ```
 
-### 6. バックエンドの依存関係インストール
+### 4. バックエンドの依存関係インストール
 
 ```bash
 cd backend && go mod download && cd ..
 ```
 
-### 7. 開発サーバーの起動
+### 5. 開発サーバーの起動
 
 ターミナルを2つ開き、それぞれ `devbox shell` に入った状態で:
 
@@ -93,9 +74,7 @@ devbox run frontend:dev
 
 | コマンド | 説明 |
 |---|---|
-| `devbox services up --background` | PostgreSQL・Redis をバックグラウンド起動 |
-| `devbox services stop` | サービス停止 |
-| `devbox run db:setup` | DB作成 + マイグレーション |
+| `devbox run db:setup` | DB作成 + マイグレーション（手動実行用、通常は不要） |
 | `devbox run backend:dev` | バックエンド開発サーバー（ホットリロード） |
 | `devbox run backend:run` | バックエンド実行（ホットリロードなし） |
 | `devbox run backend:build` | バックエンドビルド |
@@ -125,13 +104,19 @@ psql hackathon
 
 ## トラブルシューティング
 
-### PostgreSQL が起動しない
+### PostgreSQL が起動しない / データが壊れた
 
 ```bash
-# データディレクトリを再初期化
-rm -rf .devbox/virtenv/postgresql_18/data
-devbox shell   # init_hook で自動再初期化
-devbox services up --background
+# PostgreSQLのデータディレクトリをリセット（開発データは消えます）
+rm -rf .devbox/virtenv/postgresql/data
+devbox shell   # init_hook で自動再初期化・DB作成・マイグレーションまで実行
+```
+
+### マイグレーションを再適用したい
+
+```bash
+# sentinelファイルを削除してから devbox shell に入り直す
+rm .devbox/virtenv/postgresql/data/.migration_applied
 devbox run db:setup
 ```
 
@@ -143,10 +128,10 @@ lsof -i :8080   # バックエンド
 lsof -i :3000   # フロントエンド
 ```
 
-### devbox services が動かない
+### process-compose のロックが残っている
 
 ```bash
-# process-compose のプロセスが残っている場合
-devbox services stop
-devbox services up --background
+# ソケット・ロックファイルを手動で削除
+rm -f .devbox/virtenv/postgresql/.s.PGSQL.5432 .devbox/virtenv/postgresql/.s.PGSQL.5432.lock
+devbox shell
 ```
