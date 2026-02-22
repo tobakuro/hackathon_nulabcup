@@ -25,14 +25,19 @@ export default function MatchmakingPanel({ user }: MatchmakingPanelProps) {
 
   const handleMessage = useCallback(
     (data: unknown) => {
+      console.log("[MatchmakingPanel] WS message received:", JSON.stringify(data));
       const msg = data as WsMessage;
       switch (msg.type) {
         case "ev_queue_joined":
           setMatchmaking(true);
           break;
         case "ev_match_found":
+          console.log("[MatchmakingPanel] ev_match_found payload:", JSON.stringify(msg.payload));
           if (msg.payload?.room_id) {
+            console.log("[MatchmakingPanel] navigating to /room/" + msg.payload.room_id);
             router.push(`/room/${msg.payload.room_id}`);
+          } else {
+            console.warn("[MatchmakingPanel] ev_match_found but no room_id in payload");
           }
           break;
         case "ev_error":
@@ -67,6 +72,24 @@ export default function MatchmakingPanel({ user }: MatchmakingPanelProps) {
     handleStart();
   };
 
+  const [testBotStatus, setTestBotStatus] = useState<string | null>(null);
+
+  const handleAddTestUser = async () => {
+    setTestBotStatus("追加中...");
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+      const res = await fetch(`${apiBase}/api/dev/enqueue-test-user`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setTestBotStatus("test-bot をキューに追加しました");
+      } else {
+        setTestBotStatus(data.message || data.error || "追加に失敗");
+      }
+    } catch {
+      setTestBotStatus("API接続エラー");
+    }
+  };
+
   const isDisconnectedWithError = status === "error";
 
   return (
@@ -94,12 +117,23 @@ export default function MatchmakingPanel({ user }: MatchmakingPanelProps) {
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-4 border-zinc-200 border-t-blue-600 dark:border-zinc-700 dark:border-t-blue-400 rounded-full animate-spin" />
           <p className="text-zinc-600 dark:text-zinc-400">対戦相手を探しています...</p>
-          <button
-            onClick={handleCancel}
-            className="px-4 py-2 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded hover:bg-zinc-300 dark:hover:bg-zinc-600 transition"
-          >
-            キャンセル
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleCancel}
+              className="px-4 py-2 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded hover:bg-zinc-300 dark:hover:bg-zinc-600 transition"
+            >
+              キャンセル
+            </button>
+            <button
+              onClick={handleAddTestUser}
+              className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition text-sm"
+            >
+              DEV: Bot追加
+            </button>
+          </div>
+          {testBotStatus && (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">{testBotStatus}</p>
+          )}
         </div>
       ) : (
         <div className="flex flex-col items-center gap-3">

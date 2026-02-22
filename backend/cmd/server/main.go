@@ -53,9 +53,10 @@ func main() {
 	userHandler := handler.NewUserHandler(userUsecase)
 	matchmakeHandler := handler.NewMatchmakeHandler(hub, userRepo)
 	roomHandler := handler.NewRoomHandler()
+	devHandler := handler.NewDevHandler(userRepo, matchmakingUsecase)
 
 	// Router & Start
-	e := handler.NewRouter(userHandler, matchmakeHandler, roomHandler)
+	e := handler.NewRouter(userHandler, matchmakeHandler, roomHandler, devHandler)
 	addr := fmt.Sprintf(":%d", cfg.ServerPort)
 	log.Printf("starting server on %s", addr)
 	if err := e.Start(addr); err != nil {

@@ -43,6 +43,7 @@ export function useWebSocket({ url, onMessage }: UseWebSocketOptions): UseWebSoc
     };
 
     ws.onmessage = (event) => {
+      console.log("[useWebSocket] raw message:", event.data);
       try {
         const data = JSON.parse(event.data);
         onMessageRef.current(data);

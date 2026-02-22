@@ -52,6 +52,7 @@ func (h *Hub) SendToUser(userID uuid.UUID, msg WSMessage) {
 	conn, ok := h.connections[userID]
 	h.mu.RUnlock()
 	if !ok {
+		log.Printf("hub: no connection found for user %s (skipping send)", userID)
 		return
 	}
 
@@ -63,6 +64,8 @@ func (h *Hub) SendToUser(userID uuid.UUID, msg WSMessage) {
 
 	if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
 		log.Printf("hub: failed to send to %s: %v", userID, err)
+	} else {
+		log.Printf("hub: sent %s to user %s", msg.Type, userID)
 	}
 }
 
@@ -86,8 +89,19 @@ func (h *Hub) Run(ctx context.Context) {
 				continue
 			}
 
-			log.Printf("hub: match found! room=%s, p1=%s, p2=%s",
-				result.Room.ID, result.Player1.GitHubLogin, result.Player2.GitHubLogin)
+			log.Printf("hub: match found! room=%s, p1=%s (%s), p2=%s (%s)",
+				result.Room.ID,
+				result.Player1.GitHubLogin, result.Room.Player1ID,
+				result.Player2.GitHubLogin, result.Room.Player2ID)
+
+			// 接続マップの状態をログ
+			h.mu.RLock()
+			connIDs := make([]string, 0, len(h.connections))
+			for id := range h.connections {
+				connIDs = append(connIDs, id.String())
+			}
+			h.mu.RUnlock()
+			log.Printf("hub: current connections: %v", connIDs)
 
 			// Player1 に通知
 			h.SendToUser(result.Room.Player1ID, WSMessage{
