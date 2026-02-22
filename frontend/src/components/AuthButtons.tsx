@@ -1,5 +1,6 @@
 import { signIn, signOut, auth } from "@/auth";
 import Image from "next/image";
+import Link from "next/link";
 import { SubmitButton, SignOutButton } from "./SubmitButtons";
 
 export default async function AuthButtons() {
@@ -20,6 +21,12 @@ export default async function AuthButtons() {
                         className="rounded-full"
                     />
                 )}
+                <Link
+                    href="/lobby"
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                >
+                    ロビーへ
+                </Link>
                 <form
                     action={async () => {
                         "use server";

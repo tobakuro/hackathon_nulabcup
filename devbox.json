@@ -41,6 +41,9 @@
       ],
       "sqlc:generate": [
         "cd backend/db && sqlc generate"
+      ],
+      "backend:lint": [
+        "cd backend && golangci-lint run ./..."
       ]
     }
   }

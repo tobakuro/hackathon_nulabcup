@@ -1,4 +1,4 @@
-.PHONY: build run sqlc-generate tidy
+.PHONY: build run sqlc-generate tidy lint
 
 build:
 	go build -o bin/server ./cmd/server
@@ -11,3 +11,6 @@ sqlc-generate:
 
 tidy:
 	go mod tidy
+
+lint:
+	golangci-lint run ./...

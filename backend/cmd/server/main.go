@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -40,8 +41,17 @@ func main() {
 	userRepo := persistence.NewUserRepository(queries)
 	userUsecase := usecase.NewUserUsecase(userRepo)
 
+	matchmakingRepo := persistence.NewMatchmakingRepository(rdb)
+	roomRepo := persistence.NewRoomRepository(queries, rdb)
+	matchmakingUsecase := usecase.NewMatchmakingUsecase(matchmakingRepo, roomRepo, userRepo)
+
+	hub := handler.NewHub(matchmakingUsecase)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go hub.Run(ctx)
+
 	userHandler := handler.NewUserHandler(userUsecase)
-	matchmakeHandler := handler.NewMatchmakeHandler()
+	matchmakeHandler := handler.NewMatchmakeHandler(hub, userRepo)
 	roomHandler := handler.NewRoomHandler()
 
 	// Router & Start
