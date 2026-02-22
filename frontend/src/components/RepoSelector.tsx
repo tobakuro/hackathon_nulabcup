@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { GitHubRepo } from "@/app/repos/page.tsx";
-import { getRepoLanguages } from "@/app/actions/github";
+import { getRepoLanguages, getRepoDependencies } from "@/app/actions/github";
 
 export default function RepoSelector({
     repos,
@@ -18,6 +18,7 @@ export default function RepoSelector({
     const [repoDetails, setRepoDetails] = useState<{
         repo: GitHubRepo;
         languages: { name: string; percentage: number; bytes: number }[];
+        dependencies: string[];
     } | null>(null);
 
     // 選択されたリポジトリのオブジェクトを取得
@@ -31,9 +32,12 @@ export default function RepoSelector({
         setRepoDetails(null);
 
         try {
-            // Server Actionを使って言語ごとのバイト数を取得
+            // Server Actionを使って言語ごとのバイト数と該当ブランチの各種詳細（依存関係）を同時に取得
             const [owner, repo] = selectedRepoFullName.split("/");
-            const langs = await getRepoLanguages(owner, repo, accessToken);
+            const [langs, rawDependencies] = await Promise.all([
+                getRepoLanguages(owner, repo, accessToken),
+                getRepoDependencies(owner, repo, selectedRepo.default_branch, accessToken)
+            ]);
 
             // 合計バイト数を計算して割合(%)を出す
             const totalBytes = Object.values(langs).reduce((sum, bytes) => sum + bytes, 0);
@@ -48,7 +52,8 @@ export default function RepoSelector({
 
             setRepoDetails({
                 repo: selectedRepo,
-                languages: languagesList
+                languages: languagesList,
+                dependencies: rawDependencies
             });
 
         } catch (err) {
@@ -148,6 +153,23 @@ export default function RepoSelector({
                             </div>
                         )}
                     </div>
+
+                    {/* 依存関係 (ライブラリ/フレームワーク) の表示 */}
+                    {repoDetails.dependencies && repoDetails.dependencies.length > 0 && (
+                        <div className="mt-4 pt-4 border-t dark:border-zinc-700">
+                            <h3 className="font-semibold text-sm text-zinc-500 mb-3 uppercase tracking-wider">Major Technologies</h3>
+                            <div className="flex flex-wrap gap-2">
+                                {repoDetails.dependencies.map((dep) => (
+                                    <span
+                                        key={dep}
+                                        className="px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 rounded-md border border-blue-200 dark:border-blue-800"
+                                    >
+                                        {dep}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
