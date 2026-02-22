@@ -17,12 +17,12 @@
       "if ! pg_isready -h \"$PGHOST\" -q 2>/dev/null; then echo 'PostgreSQLを起動しています...'; pg_ctl start -D \"$PGDATA\" -o \"-k '$PGHOST'\" -l \"$PGDATA/postgresql.log\" -w 2>/dev/null || (devbox services up --background 2>/dev/null; true); fi",
       "echo 'PostgreSQLの起動を待っています...'; for i in $(seq 1 60); do pg_isready -h \"$PGHOST\" -q && break; sleep 1; printf '.'; done; echo ''",
       "if ! psql -lqt -h \"$PGHOST\" 2>/dev/null | cut -d '|' -f 1 | grep -qw hackathon; then echo 'データベースを作成しています...'; createdb -h \"$PGHOST\" hackathon && echo 'Created database: hackathon'; fi",
-      "if [ ! -f \"$PGDATA/.migration_applied\" ]; then echo 'マイグレーションを適用しています...'; psql -h \"$PGHOST\" hackathon -f backend/db/migrations/001_init.sql && touch \"$PGDATA/.migration_applied\" && echo 'Migration applied.'; fi"
+      "echo 'マイグレーションを適用しています...'; for f in backend/db/migrations/*.sql; do echo \"Applying $f...\"; psql -h \"$PGHOST\" hackathon -f \"$f\"; done; echo 'All migrations applied.'"
     ],
     "scripts": {
       "db:setup": [
         "if ! psql -h \"$PGHOST\" -lqt 2>/dev/null | cut -d '|' -f 1 | grep -qw hackathon; then createdb -h \"$PGHOST\" hackathon && echo 'Created database: hackathon'; else echo 'Database hackathon already exists'; fi",
-        "psql -h \"$PGHOST\" hackathon -f backend/db/migrations/001_init.sql && touch \"$PGDATA/.migration_applied\" && echo 'Migration applied.'"
+        "for f in backend/db/migrations/*.sql; do echo \"Applying $f...\"; psql -h \"$PGHOST\" hackathon -f \"$f\"; done; echo 'All migrations applied.'"
       ],
       "backend:dev": [
         "cd backend && air"
