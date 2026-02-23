@@ -1,5 +1,33 @@
 "use server";
 
+import { GoogleGenAI } from "@google/genai";
+
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+function validateRepoParams(
+  owner: string,
+  repo: string,
+  accessToken: string,
+  defaultBranch?: string,
+) {
+  if (!owner) throw new Error("missing owner");
+  if (!repo) throw new Error("missing repo");
+  if (!accessToken) throw new Error("missing accessToken");
+  if (defaultBranch !== undefined && !defaultBranch) throw new Error("missing defaultBranch");
+
+  if (!/^[\w.-]+$/.test(owner)) throw new Error("invalid owner format");
+  if (!/^[\w.-]+$/.test(repo)) throw new Error("invalid repo format");
+}
+
 /**
  * Server Action: 指定したリポジトリの使用言語とそのバイト数を取得する
  * @param owner リポジトリのオーナー名
@@ -12,19 +40,20 @@ export async function getRepoLanguages(
   repo: string,
   accessToken: string,
 ): Promise<Record<string, number>> {
-  if (!owner || !repo || !accessToken) {
-    throw new Error("Invalid parameters");
-  }
+  validateRepoParams(owner, repo, accessToken);
 
-  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/languages`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/vnd.github.v3+json",
+  const res = await fetchWithTimeout(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/languages`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+      // 言語構成は頻繁に変わるものではないのでキャッシュを効かせつつ、再検証の余地を残すことも可能
+      // 今回は最新を取るために no-store にしています
+      cache: "no-store",
     },
-    // 言語構成は頻繁に変わるものではないのでキャッシュを効かせつつ、再検証の余地を残すことも可能
-    // 今回は最新を取るために no-store にしています
-    cache: "no-store",
-  });
+  );
 
   if (!res.ok) {
     throw new Error(`Failed to fetch languages: ${res.statusText}`);
@@ -33,8 +62,6 @@ export async function getRepoLanguages(
   const data = await res.json();
   return data;
 }
-
-import { GoogleGenerativeAI, Schema, SchemaType } from "@google/generative-ai";
 
 export interface TechDetails {
   name: string;
@@ -62,9 +89,7 @@ export async function getRepoDependencies(
   defaultBranch: string,
   accessToken: string,
 ): Promise<AIAnalysisReport | null> {
-  if (!owner || !repo || !defaultBranch || !accessToken) {
-    throw new Error("Invalid parameters");
-  }
+  validateRepoParams(owner, repo, accessToken, defaultBranch);
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -79,8 +104,8 @@ export async function getRepoDependencies(
 
   try {
     // 1. Git Trees APIでリポジトリ構造を一括取得
-    const treeRes = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`,
+    const treeRes = await fetchWithTimeout(
+      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(defaultBranch)}?recursive=1`,
       { headers, cache: "no-store" },
     );
     if (!treeRes.ok) return null;
@@ -116,7 +141,9 @@ export async function getRepoDependencies(
         const lowerPath = item.path.toLowerCase();
         if (ignoreDirs.some((dir) => lowerPath.includes(dir))) return false;
         if (
-          lowerPath.includes("test") ||
+          /(^|\/)test(\/|$)/.test(lowerPath) ||
+          /\.test\./.test(lowerPath) ||
+          /\.spec\./.test(lowerPath) ||
           lowerPath.endsWith(".png") ||
           lowerPath.endsWith(".svg") ||
           lowerPath.endsWith(".jpg")
@@ -154,10 +181,14 @@ export async function getRepoDependencies(
     // 3. ファイルの中身を並列取得し、1つの巨大なテキストに結合
     const fetchContent = async (path: string) => {
       try {
-        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
-          headers,
-          cache: "no-store",
-        });
+        const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+        const res = await fetchWithTimeout(
+          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodedPath}`,
+          {
+            headers,
+            cache: "no-store",
+          },
+        );
         if (!res.ok) return "";
         const data = await res.json();
         if (!data.content) return "";
@@ -184,39 +215,39 @@ export async function getRepoDependencies(
     }
 
     // 4. Gemini APIに渡して構造化出力 (JSON) を生成させる
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const ai = new GoogleGenAI({ apiKey });
 
-    const responseSchema: Schema = {
-      type: SchemaType.OBJECT,
+    const responseSchema = {
+      type: "object",
       properties: {
         summary: {
-          type: SchemaType.STRING,
+          type: "string",
           description:
             "プロジェクト全体が主に何をするアプリ・システムなのかを簡潔に説明（〜150文字）",
         },
         architecture: {
-          type: SchemaType.STRING,
+          type: "string",
           description:
             "全体的な設計手法や工夫点、フロントエンドとバックエンドの繋がりなどの特徴（〜200文字）",
         },
         technologies: {
-          type: SchemaType.ARRAY,
+          type: "array",
           description:
             "使われている主要な技術（最大8個）。eslintなどの単なるビルド/テストツールは省き、プロダクトのコアに直結するライブラリ（MediaPipe、Next.js、Supabaseなど）を抽出すること。",
           items: {
-            type: SchemaType.OBJECT,
+            type: "object",
             properties: {
               name: {
-                type: SchemaType.STRING,
+                type: "string",
                 description: "技術名 (例: 'React', 'MediaPipe', 'Gin')",
               },
               purpose: {
-                type: SchemaType.STRING,
+                type: "string",
                 description:
                   "何のために使っているかの一言説明 (例: 'UI構築', '顔認識アルゴリズム')",
               },
               implementation: {
-                type: SchemaType.STRING,
+                type: "string",
                 description:
                   "どう実装されているかの具体的な概要 (例: 'カメラ映像を解析しランドマークを抽出')",
               },
@@ -228,18 +259,19 @@ export async function getRepoDependencies(
       required: ["summary", "architecture", "technologies"],
     };
 
-    const model = genAI.getGenerativeModel({
+    const prompt = `以下のソースコードファイル群を解析し、このリポジトリの概要、アーキテクチャ、および使用技術を日本語でJSON形式で出力してください。\n\n${combinedText}`;
+
+    const result = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      generationConfig: {
+      contents: prompt,
+      config: {
         responseMimeType: "application/json",
         responseSchema: responseSchema,
       },
     });
 
-    const prompt = `以下のソースコードファイル群を解析し、このリポジトリの概要、アーキテクチャ、および使用技術を日本語でJSON形式で出力してください。\n\n${combinedText}`;
-
-    const result = await model.generateContent(prompt);
-    const reportText = result.response.text();
+    const reportText = result.text;
+    if (!reportText) return null;
     const report = JSON.parse(reportText) as AIAnalysisReport;
     report.analyzedFiles = targetFiles.map((file: { path: string }) => file.path);
 
