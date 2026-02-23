@@ -15,12 +15,12 @@ import (
 var dequeueScript = redis.NewScript(`
 local first = redis.call('LPOP', KEYS[1])
 if not first then
-  return {false, false}
+  return {}
 end
 local second = redis.call('LPOP', KEYS[1])
 if not second then
   redis.call('RPUSH', KEYS[1], first)
-  return {false, false}
+  return {}
 end
 return {first, second}
 `)
@@ -44,7 +44,7 @@ func (r *matchmakingRepository) Enqueue(ctx context.Context, userID uuid.UUID) e
 }
 
 func (r *matchmakingRepository) Dequeue(ctx context.Context) (uuid.UUID, uuid.UUID, error) {
-	result, err := dequeueScript.Run(ctx, r.rdb, []string{matchmakingQueueKey}).StringSlice()
+	raw, err := dequeueScript.Run(ctx, r.rdb, []string{matchmakingQueueKey}).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return uuid.Nil, uuid.Nil, nil
@@ -52,8 +52,18 @@ func (r *matchmakingRepository) Dequeue(ctx context.Context) (uuid.UUID, uuid.UU
 		return uuid.Nil, uuid.Nil, fmt.Errorf("dequeue script: %w", err)
 	}
 
-	if len(result) != 2 || result[0] == "" || result[1] == "" {
+	items, ok := raw.([]interface{})
+	if !ok || len(items) != 2 {
 		return uuid.Nil, uuid.Nil, nil
+	}
+
+	result := make([]string, 2)
+	for i, item := range items {
+		s, ok := item.(string)
+		if !ok || s == "" {
+			return uuid.Nil, uuid.Nil, nil
+		}
+		result[i] = s
 	}
 
 	firstID, err := uuid.Parse(result[0])
