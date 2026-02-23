@@ -53,54 +53,6 @@
       "last_modified": "2026-02-16T02:09:13Z",
       "resolved": "github:NixOS/nixpkgs/d1c15b7d5806069da59e819999d70e1cec0760bf?lastModified=1771207753"
     },
-    "go-migrate@latest": {
-      "last_modified": "2026-01-23T17:20:52Z",
-      "resolved": "github:NixOS/nixpkgs/a1bab9e494f5f4939442a57a58d0449a109593fe#go-migrate",
-      "source": "devbox-search",
-      "version": "4.19.1",
-      "systems": {
-        "aarch64-darwin": {
-          "outputs": [
-            {
-              "name": "out",
-              "path": "/nix/store/w2mdqix2f1jissfs9ckmf7gj2grnl3cx-go-migrate-4.19.1",
-              "default": true
-            }
-          ],
-          "store_path": "/nix/store/w2mdqix2f1jissfs9ckmf7gj2grnl3cx-go-migrate-4.19.1"
-        },
-        "aarch64-linux": {
-          "outputs": [
-            {
-              "name": "out",
-              "path": "/nix/store/x3jq05lm0a5ymx6l7x57zrhihmyf6fdg-go-migrate-4.19.1",
-              "default": true
-            }
-          ],
-          "store_path": "/nix/store/x3jq05lm0a5ymx6l7x57zrhihmyf6fdg-go-migrate-4.19.1"
-        },
-        "x86_64-darwin": {
-          "outputs": [
-            {
-              "name": "out",
-              "path": "/nix/store/w4nycphjbx81i7n4ddnf9bcjfxaw45qw-go-migrate-4.19.1",
-              "default": true
-            }
-          ],
-          "store_path": "/nix/store/w4nycphjbx81i7n4ddnf9bcjfxaw45qw-go-migrate-4.19.1"
-        },
-        "x86_64-linux": {
-          "outputs": [
-            {
-              "name": "out",
-              "path": "/nix/store/k169g6251dkvi0501pbxn7djwq1i4ba5-go-migrate-4.19.1",
-              "default": true
-            }
-          ],
-          "store_path": "/nix/store/k169g6251dkvi0501pbxn7djwq1i4ba5-go-migrate-4.19.1"
-        }
-      }
-    },
     "go@1.26": {
       "last_modified": "2026-02-11T12:16:34Z",
       "resolved": "github:NixOS/nixpkgs/8482c7ded03bae7550f3d69884f1e611e3bd19e8#go_1_26",
@@ -194,6 +146,54 @@
             }
           ],
           "store_path": "/nix/store/z4hziw97m0z1zlrn27pyk53s13czn1gi-golangci-lint-2.9.0"
+        }
+      }
+    },
+    "goose@latest": {
+      "last_modified": "2026-01-23T17:20:52Z",
+      "resolved": "github:NixOS/nixpkgs/a1bab9e494f5f4939442a57a58d0449a109593fe#goose",
+      "source": "devbox-search",
+      "version": "3.26.0",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/w6fxqkf2s0fnja0vjghcs4ijz7r53kia-goose-3.26.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/w6fxqkf2s0fnja0vjghcs4ijz7r53kia-goose-3.26.0"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/l81lbws31swshfh3hwcaczd2z26xwdal-goose-3.26.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/l81lbws31swshfh3hwcaczd2z26xwdal-goose-3.26.0"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/4l878ic3982y7vi4ddwklad8j1kv3619-goose-3.26.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/4l878ic3982y7vi4ddwklad8j1kv3619-goose-3.26.0"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/xjvfgc86859nqr8jdyd3gcs2rf5yzav0-goose-3.26.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/xjvfgc86859nqr8jdyd3gcs2rf5yzav0-goose-3.26.0"
         }
       }
     },

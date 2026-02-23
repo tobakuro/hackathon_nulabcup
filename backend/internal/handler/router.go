@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"os"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -9,6 +11,7 @@ func NewRouter(
 	userHandler *UserHandler,
 	matchmakeHandler *MatchmakeHandler,
 	roomHandler *RoomHandler,
+	devHandler *DevHandler,
 ) *echo.Echo {
 	e := echo.New()
 
@@ -24,6 +27,12 @@ func NewRouter(
 	ws := e.Group("/ws")
 	ws.GET("/matchmake", matchmakeHandler.HandleMatchmake)
 	ws.GET("/room/:room_id", roomHandler.HandleRoom)
+
+	// Dev API (development only)
+	if os.Getenv("ENV") == "development" && devHandler != nil {
+		dev := e.Group("/api/dev")
+		dev.POST("/enqueue-test-user", devHandler.EnqueueTestUser)
+	}
 
 	return e
 }

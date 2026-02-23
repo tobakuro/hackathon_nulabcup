@@ -34,6 +34,14 @@ func (r *userRepository) GetByGitHubID(ctx context.Context, githubID int64) (*en
 	return toEntityUser(u), nil
 }
 
+func (r *userRepository) GetByGitHubLogin(ctx context.Context, login string) (*entity.User, error) {
+	u, err := r.q.GetUserByGitHubLogin(ctx, login)
+	if err != nil {
+		return nil, fmt.Errorf("get user by github login: %w", err)
+	}
+	return toEntityUser(u), nil
+}
+
 func (r *userRepository) Create(ctx context.Context, user *entity.User) error {
 	created, err := r.q.CreateUser(ctx, sqlc.CreateUserParams{
 		GithubID:       user.GitHubID,

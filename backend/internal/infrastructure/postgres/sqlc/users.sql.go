@@ -59,6 +59,26 @@ func (q *Queries) GetUserByGitHubID(ctx context.Context, githubID int64) (User, 
 	return i, err
 }
 
+const getUserByGitHubLogin = `-- name: GetUserByGitHubLogin :one
+SELECT id, github_id, github_login, gnu_balance, rate, encrypted_token, created_at, updated_at FROM users WHERE github_login = $1
+`
+
+func (q *Queries) GetUserByGitHubLogin(ctx context.Context, githubLogin string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByGitHubLogin, githubLogin)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.GithubID,
+		&i.GithubLogin,
+		&i.GnuBalance,
+		&i.Rate,
+		&i.EncryptedToken,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getUserByID = `-- name: GetUserByID :one
 SELECT id, github_id, github_login, gnu_balance, rate, encrypted_token, created_at, updated_at FROM users WHERE id = $1
 `
@@ -80,7 +100,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 }
 
 const updateGnuBalance = `-- name: UpdateGnuBalance :exec
-UPDATE users SET gnu_balance = $2, updated_at = NOW() WHERE id = $1
+UPDATE users SET gnu_balance = GREATEST(0, gnu_balance + $2), updated_at = NOW() WHERE id = $1
 `
 
 type UpdateGnuBalanceParams struct {
