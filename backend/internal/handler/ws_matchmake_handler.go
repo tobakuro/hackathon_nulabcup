@@ -1,20 +1,48 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/tobakuro/hackathon_nulabcup/backend/internal/domain/entity"
 	"github.com/tobakuro/hackathon_nulabcup/backend/internal/domain/repository"
+	"github.com/tobakuro/hackathon_nulabcup/backend/internal/usecase"
 )
+
+// allowedOrigins は環境変数 ALLOWED_ORIGINS からカンマ区切りで読み込む
+func allowedOrigins() []string {
+	raw := os.Getenv("ALLOWED_ORIGINS")
+	if raw == "" {
+		return []string{"http://localhost:3000"}
+	}
+	parts := strings.Split(raw, ",")
+	origins := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if trimmed := strings.TrimSpace(p); trimmed != "" {
+			origins = append(origins, trimmed)
+		}
+	}
+	return origins
+}
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return true
+		origin := r.Header.Get("Origin")
+		for _, allowed := range allowedOrigins() {
+			if origin == allowed {
+				return true
+			}
+		}
+		log.Printf("ws: rejected origin %q", origin)
+		return false
 	},
 }
 
@@ -38,9 +66,17 @@ func (h *MatchmakeHandler) HandleMatchmake(c echo.Context) error {
 	// GitHub login からユーザーを検索（存在しなければ自動作成）
 	user, err := h.userRepo.GetByGitHubLogin(ctx, githubLogin)
 	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			log.Printf("matchmake: failed to get user %s: %v", githubLogin, err)
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user")
+		}
 		log.Printf("matchmake: user %s not found, creating...", githubLogin)
 		githubIDStr := c.QueryParam("github_id")
-		githubID, _ := strconv.ParseInt(githubIDStr, 10, 64)
+		githubID, parseErr := strconv.ParseInt(githubIDStr, 10, 64)
+		if parseErr != nil {
+			log.Printf("matchmake: invalid github_id %q: %v", githubIDStr, parseErr)
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid github_id")
+		}
 		user = &entity.User{
 			GitHubID:    githubID,
 			GitHubLogin: githubLogin,
@@ -60,14 +96,9 @@ func (h *MatchmakeHandler) HandleMatchmake(c echo.Context) error {
 	}
 	defer ws.Close()
 
-	h.hub.Register(userID, ws)
-	defer h.hub.Unregister(userID)
-
-	log.Printf("matchmake: user %s (%s) connected", githubLogin, userID)
-
-	// キューに参加
+	// JoinQueue を先に呼び出し、成功後に Register する
 	if err := h.hub.usecase.JoinQueue(ctx, userID); err != nil {
-		if err.Error() == "already_in_queue" {
+		if errors.Is(err, usecase.ErrAlreadyInQueue) {
 			sendWSMessage(ws, WSMessage{
 				Type: "ev_error",
 				Payload: map[string]any{
@@ -76,6 +107,7 @@ func (h *MatchmakeHandler) HandleMatchmake(c echo.Context) error {
 				},
 			})
 		} else {
+			log.Printf("matchmake: join queue error for %s: %v", userID, err)
 			sendWSMessage(ws, WSMessage{
 				Type: "ev_error",
 				Payload: map[string]any{
@@ -86,6 +118,11 @@ func (h *MatchmakeHandler) HandleMatchmake(c echo.Context) error {
 		}
 		return nil
 	}
+
+	h.hub.Register(userID, ws)
+	defer h.hub.Unregister(userID)
+
+	log.Printf("matchmake: user %s (%s) connected", githubLogin, userID)
 
 	sendWSMessage(ws, WSMessage{
 		Type: "ev_queue_joined",
@@ -113,9 +150,7 @@ func (h *MatchmakeHandler) HandleMatchmake(c echo.Context) error {
 		switch incoming.Type {
 		case "act_cancel_matchmaking":
 			log.Printf("matchmake: user %s cancelled", userID)
-			if err := h.hub.usecase.LeaveQueue(ctx, userID); err != nil {
-				log.Printf("matchmake: leave queue error for %s: %v", userID, err)
-			}
+			// LeaveQueue は defer h.hub.Unregister(userID) が呼び出す
 			return nil
 		}
 	}

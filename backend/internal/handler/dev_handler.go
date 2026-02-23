@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"database/sql"
+	"errors"
 	"log"
 	"net/http"
 
@@ -27,6 +29,10 @@ func (h *DevHandler) EnqueueTestUser(c echo.Context) error {
 	testLogin := "test-bot"
 	user, err := h.userRepo.GetByGitHubLogin(ctx, testLogin)
 	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			log.Printf("dev: failed to get test user: %v", err)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to get test user"})
+		}
 		user = &entity.User{
 			GitHubID:    999999999,
 			GitHubLogin: testLogin,
@@ -40,7 +46,7 @@ func (h *DevHandler) EnqueueTestUser(c echo.Context) error {
 
 	// キューに追加
 	if err := h.matchmakingUC.JoinQueue(ctx, user.ID); err != nil {
-		if err.Error() == "already_in_queue" {
+		if errors.Is(err, usecase.ErrAlreadyInQueue) {
 			return c.JSON(http.StatusConflict, map[string]string{
 				"message": "test-bot is already in queue",
 				"user_id": user.ID.String(),

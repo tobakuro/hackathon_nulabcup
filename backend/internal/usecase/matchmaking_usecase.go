@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,6 +10,9 @@ import (
 	"github.com/tobakuro/hackathon_nulabcup/backend/internal/domain/entity"
 	"github.com/tobakuro/hackathon_nulabcup/backend/internal/domain/repository"
 )
+
+// ErrAlreadyInQueue はユーザーが既にマッチングキューにいる場合のエラー
+var ErrAlreadyInQueue = errors.New("already_in_queue")
 
 type MatchmakingResult struct {
 	Room     *entity.Room
@@ -40,7 +44,7 @@ func (uc *MatchmakingUsecase) JoinQueue(ctx context.Context, userID uuid.UUID) e
 		return fmt.Errorf("set active: %w", err)
 	}
 	if !ok {
-		return fmt.Errorf("already_in_queue")
+		return ErrAlreadyInQueue
 	}
 
 	if err := uc.matchmakingRepo.Enqueue(ctx, userID); err != nil {
@@ -69,20 +73,26 @@ func (uc *MatchmakingUsecase) TryMatch(ctx context.Context) (*MatchmakingResult,
 		return nil, nil
 	}
 
-	// Dequeue 成功後のエラーパスでは active フラグをクリアする
+	// Dequeue 成功後のエラーパスでは active フラグをクリアしてキューに戻す
 	clearBoth := func() {
 		uc.matchmakingRepo.ClearActive(ctx, p1ID)
 		uc.matchmakingRepo.ClearActive(ctx, p2ID)
+	}
+	requeueBoth := func() {
+		uc.matchmakingRepo.Enqueue(ctx, p1ID)
+		uc.matchmakingRepo.Enqueue(ctx, p2ID)
 	}
 
 	// ユーザー情報取得
 	player1, err := uc.userRepo.GetByID(ctx, p1ID)
 	if err != nil {
+		requeueBoth()
 		clearBoth()
 		return nil, fmt.Errorf("get player1: %w", err)
 	}
 	player2, err := uc.userRepo.GetByID(ctx, p2ID)
 	if err != nil {
+		requeueBoth()
 		clearBoth()
 		return nil, fmt.Errorf("get player2: %w", err)
 	}
@@ -92,12 +102,13 @@ func (uc *MatchmakingUsecase) TryMatch(ctx context.Context) (*MatchmakingResult,
 		ID:        uuid.New(),
 		Player1ID: p1ID,
 		Player2ID: p2ID,
-		Status:    "waiting",
+		Status:    entity.RoomStatusWaiting,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
 
 	if err := uc.roomRepo.Create(ctx, room); err != nil {
+		requeueBoth()
 		clearBoth()
 		return nil, fmt.Errorf("create room: %w", err)
 	}

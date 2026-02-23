@@ -75,6 +75,7 @@ export default function MatchmakingPanel({ user }: MatchmakingPanelProps) {
   const [testBotStatus, setTestBotStatus] = useState<string | null>(null);
 
   const handleAddTestUser = async () => {
+    if (process.env.NODE_ENV !== "development") return;
     setTestBotStatus("追加中...");
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -124,12 +125,14 @@ export default function MatchmakingPanel({ user }: MatchmakingPanelProps) {
             >
               キャンセル
             </button>
-            <button
-              onClick={handleAddTestUser}
-              className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition text-sm"
-            >
-              DEV: Bot追加
-            </button>
+            {process.env.NODE_ENV === "development" && (
+              <button
+                onClick={handleAddTestUser}
+                className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition text-sm"
+              >
+                DEV: Bot追加
+              </button>
+            )}
           </div>
           {testBotStatus && (
             <p className="text-xs text-zinc-500 dark:text-zinc-400">{testBotStatus}</p>

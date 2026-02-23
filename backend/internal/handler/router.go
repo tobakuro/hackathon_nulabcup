@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"os"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -27,8 +29,10 @@ func NewRouter(
 	ws.GET("/room/:room_id", roomHandler.HandleRoom)
 
 	// Dev API (development only)
-	dev := e.Group("/api/dev")
-	dev.POST("/enqueue-test-user", devHandler.EnqueueTestUser)
+	if os.Getenv("ENV") == "development" && devHandler != nil {
+		dev := e.Group("/api/dev")
+		dev.POST("/enqueue-test-user", devHandler.EnqueueTestUser)
+	}
 
 	return e
 }

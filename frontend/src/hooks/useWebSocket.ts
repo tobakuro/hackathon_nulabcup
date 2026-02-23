@@ -57,8 +57,10 @@ export function useWebSocket({ url, onMessage }: UseWebSocketOptions): UseWebSoc
     };
 
     ws.onclose = () => {
-      wsRef.current = null;
-      setStatus((prev) => (prev === "error" ? "error" : "disconnected"));
+      if (wsRef.current === ws) {
+        wsRef.current = null;
+        setStatus((prev) => (prev === "error" ? "error" : "disconnected"));
+      }
     };
 
     wsRef.current = ws;

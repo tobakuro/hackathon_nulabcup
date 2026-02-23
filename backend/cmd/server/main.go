@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/tobakuro/hackathon_nulabcup/backend/internal/config"
 	"github.com/tobakuro/hackathon_nulabcup/backend/internal/handler"
@@ -53,7 +54,11 @@ func main() {
 	userHandler := handler.NewUserHandler(userUsecase)
 	matchmakeHandler := handler.NewMatchmakeHandler(hub, userRepo)
 	roomHandler := handler.NewRoomHandler()
-	devHandler := handler.NewDevHandler(userRepo, matchmakingUsecase)
+
+	var devHandler *handler.DevHandler
+	if os.Getenv("ENV") == "development" {
+		devHandler = handler.NewDevHandler(userRepo, matchmakingUsecase)
+	}
 
 	// Router & Start
 	e := handler.NewRouter(userHandler, matchmakeHandler, roomHandler, devHandler)

@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,6 +10,20 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/tobakuro/hackathon_nulabcup/backend/internal/domain/repository"
 )
+
+// dequeueScript は 2 件をアトミックに LPOP する Lua スクリプト
+var dequeueScript = redis.NewScript(`
+local first = redis.call('LPOP', KEYS[1])
+if not first then
+  return {false, false}
+end
+local second = redis.call('LPOP', KEYS[1])
+if not second then
+  redis.call('RPUSH', KEYS[1], first)
+  return {false, false}
+end
+return {first, second}
+`)
 
 const (
 	matchmakingQueueKey  = "matchmaking:queue"
@@ -29,30 +44,24 @@ func (r *matchmakingRepository) Enqueue(ctx context.Context, userID uuid.UUID) e
 }
 
 func (r *matchmakingRepository) Dequeue(ctx context.Context) (uuid.UUID, uuid.UUID, error) {
-	first, err := r.rdb.LPop(ctx, matchmakingQueueKey).Result()
+	result, err := dequeueScript.Run(ctx, r.rdb, []string{matchmakingQueueKey}).StringSlice()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return uuid.Nil, uuid.Nil, nil
 		}
-		return uuid.Nil, uuid.Nil, fmt.Errorf("dequeue first: %w", err)
+		return uuid.Nil, uuid.Nil, fmt.Errorf("dequeue script: %w", err)
 	}
 
-	second, err := r.rdb.LPop(ctx, matchmakingQueueKey).Result()
-	if err != nil {
-		if err == redis.Nil {
-			r.rdb.RPush(ctx, matchmakingQueueKey, first)
-			return uuid.Nil, uuid.Nil, nil
-		}
-		r.rdb.RPush(ctx, matchmakingQueueKey, first)
-		return uuid.Nil, uuid.Nil, fmt.Errorf("dequeue second: %w", err)
+	if len(result) != 2 || result[0] == "" || result[1] == "" {
+		return uuid.Nil, uuid.Nil, nil
 	}
 
-	firstID, err := uuid.Parse(first)
+	firstID, err := uuid.Parse(result[0])
 	if err != nil {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("parse first uuid: %w", err)
 	}
 
-	secondID, err := uuid.Parse(second)
+	secondID, err := uuid.Parse(result[1])
 	if err != nil {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("parse second uuid: %w", err)
 	}
@@ -70,7 +79,7 @@ func (r *matchmakingRepository) SetActive(ctx context.Context, userID uuid.UUID)
 		Mode: "NX",
 	}).Result()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			// NX failed: key already exists
 			return false, nil
 		}

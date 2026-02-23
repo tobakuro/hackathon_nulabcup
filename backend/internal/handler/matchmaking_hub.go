@@ -38,10 +38,11 @@ func (h *Hub) Register(userID uuid.UUID, conn *websocket.Conn) {
 
 func (h *Hub) Unregister(userID uuid.UUID) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	delete(h.connections, userID)
+	h.mu.Unlock()
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	if err := h.usecase.LeaveQueue(ctx, userID); err != nil {
 		log.Printf("hub: failed to leave queue for %s: %v", userID, err)
 	}
