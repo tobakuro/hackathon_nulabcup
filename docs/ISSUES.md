@@ -5,19 +5,19 @@
 ---
 
 ## Epic 0: 事前準備
-- [ ] **[0-1] **Nix(Devbox)による開発環境のセットアップ**（Go, Next.js, PostgreSQL, Redis）
+- [x] **[0-1] **Nix(Devbox)による開発環境のセットアップ**（Go, Next.js, PostgreSQL, Redis）
 
 ## Epic 1: インフラ・基盤セットアップ
 
-- [ ] **[1-1] PostgreSQLスキーマの構築** (`users`, `match_histories`)
-- [ ] **[1-2] RedisのセットアップとキーDB設計**
-- [ ] **[1-3] Goバックエンドの雛形作成**（フレームワーク選定・WS基盤）
+- [x] **[1-1] PostgreSQLスキーマの構築** (`users`, `match_histories`)
+- [x] **[1-2] RedisのセットアップとキーDB設計**
+- [x] **[1-3] Goバックエンドの雛形作成**（フレームワーク選定・WS基盤）
 
 ---
 
 ## Epic 2: 認証・ユーザー管理
-
-- [ ] **[2-1] GitHub OAuth ログインの実装** (NextAuth.js)
+  
+- [x] **[2-1] GitHub OAuth ログインの実装** (NextAuth.js)
 - [ ] **[2-2] `GET /api/v1/users/me` の実装** (Go)
 - [ ] **[2-3] GitHubアクセストークンの暗号化保存**
 
@@ -35,8 +35,8 @@
 
 ## Epic 4: マッチングシステム
 
-- [ ] **[4-1] WebSocket接続とマッチングキューの管理** (`ws://{host}/ws/matchmake`)
-- [ ] **[4-2] マッチング成立イベント送信** (`ev_match_found`)
+- [x] **[4-1] WebSocket接続とマッチングキューの管理** (`ws://{host}/ws/matchmake`)
+- [x] **[4-2] マッチング成立イベント送信** (`ev_match_found`)
 
 ---
 
