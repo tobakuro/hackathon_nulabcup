@@ -39,9 +39,7 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
 
   return (
     <div className="flex flex-col items-center gap-6 min-w-[300px]">
-      <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-        ルーム: {roomId}
-      </h1>
+      <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">ルーム: {roomId}</h1>
 
       <div className="flex items-center gap-2">
         <span
@@ -49,15 +47,13 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
             status === "connected"
               ? "bg-green-500"
               : status === "connecting"
-              ? "bg-yellow-500 animate-pulse"
-              : status === "error"
-              ? "bg-red-500"
-              : "bg-zinc-400"
+                ? "bg-yellow-500 animate-pulse"
+                : status === "error"
+                  ? "bg-red-500"
+                  : "bg-zinc-400"
           }`}
         />
-        <span className={`text-sm ${statusColor[status]}`}>
-          {statusLabel[status]}
-        </span>
+        <span className={`text-sm ${statusColor[status]}`}>{statusLabel[status]}</span>
       </div>
 
       <div className="p-6 border rounded-lg w-full text-center text-zinc-500 dark:text-zinc-400">
