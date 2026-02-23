@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { GitHubRepo } from "@/app/repos/page.tsx";
-import { getRepoLanguages, getRepoDependencies } from "@/app/actions/github";
+import { getRepoLanguages, getRepoDependencies, AIAnalysisReport } from "@/app/actions/github";
 
 export default function RepoSelector({
     repos,
@@ -18,10 +18,9 @@ export default function RepoSelector({
     const [repoDetails, setRepoDetails] = useState<{
         repo: GitHubRepo;
         languages: { name: string; percentage: number; bytes: number }[];
-        dependencies: string[];
+        aiReport: AIAnalysisReport | null;
     } | null>(null);
 
-    // 選択されたリポジトリのオブジェクトを取得
     const selectedRepo = repos.find(r => r.full_name === selectedRepoFullName);
 
     const handleFetchDetails = async () => {
@@ -32,14 +31,12 @@ export default function RepoSelector({
         setRepoDetails(null);
 
         try {
-            // Server Actionを使って言語ごとのバイト数と該当ブランチの各種詳細（依存関係）を同時に取得
             const [owner, repo] = selectedRepoFullName.split("/");
-            const [langs, rawDependencies] = await Promise.all([
+            const [langs, report] = await Promise.all([
                 getRepoLanguages(owner, repo, accessToken),
                 getRepoDependencies(owner, repo, selectedRepo.default_branch, accessToken)
             ]);
 
-            // 合計バイト数を計算して割合(%)を出す
             const totalBytes = Object.values(langs).reduce((sum, bytes) => sum + bytes, 0);
 
             const languagesList = Object.entries(langs)
@@ -48,12 +45,12 @@ export default function RepoSelector({
                     bytes,
                     percentage: totalBytes > 0 ? (bytes / totalBytes) * 100 : 0
                 }))
-                .sort((a, b) => b.bytes - a.bytes); // 多い順に並び替え
+                .sort((a, b) => b.bytes - a.bytes);
 
             setRepoDetails({
                 repo: selectedRepo,
                 languages: languagesList,
-                dependencies: rawDependencies
+                aiReport: report
             });
 
         } catch (err) {
@@ -85,9 +82,12 @@ export default function RepoSelector({
                     className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition disabled:bg-zinc-300 dark:disabled:bg-zinc-700 disabled:cursor-not-allowed whitespace-nowrap flex justify-center items-center min-w-[120px]"
                 >
                     {loading ? (
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <span className="text-sm">AI解析中...</span>
+                        </div>
                     ) : (
-                        "取得"
+                        "取得・解析"
                     )}
                 </button>
             </div>
@@ -99,9 +99,9 @@ export default function RepoSelector({
             )}
 
             {repoDetails && (
-                <div className="flex flex-col gap-4 p-5 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border dark:border-zinc-700 animate-in fade-in zoom-in-95 duration-200">
-                    <div>
-                        <h2 className="text-xl font-bold break-all">
+                <div className="flex flex-col gap-6 p-6 bg-white dark:bg-zinc-900 rounded-2xl border shadow-sm dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-200">
+                    <header>
+                        <h2 className="text-2xl font-bold break-all">
                             <a
                                 href={repoDetails.repo.html_url}
                                 target="_blank"
@@ -111,19 +111,69 @@ export default function RepoSelector({
                                 {repoDetails.repo.name}
                             </a>
                         </h2>
-                        <p className="mt-2 text-zinc-600 dark:text-zinc-300 text-sm leading-relaxed">
-                            {repoDetails.repo.description ? repoDetails.repo.description : <span className="text-zinc-400 italic">No description provided.</span>}
-                        </p>
-                    </div>
+                        {repoDetails.repo.description && (
+                            <p className="mt-2 text-zinc-600 dark:text-zinc-400 text-sm">
+                                {repoDetails.repo.description}
+                            </p>
+                        )}
+                    </header>
 
+                    {/* AI解析結果セクション */}
+                    {repoDetails.aiReport ? (
+                        <div className="bg-blue-50/50 dark:bg-blue-900/10 rounded-xl p-5 border border-blue-100 dark:border-blue-900/50">
+                            <div className="flex items-center gap-2 mb-4">
+                                <span className="text-xl">✨</span>
+                                <h3 className="font-bold text-blue-900 dark:text-blue-100">AI Analysis Report</h3>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <h4 className="text-xs font-semibold uppercase tracking-wider text-blue-800/60 dark:text-blue-300/60 mb-1">プロジェクト概要</h4>
+                                    <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                                        {repoDetails.aiReport.summary}
+                                    </p>
+                                </div>
+
+                                <div className="pt-2">
+                                    <h4 className="text-xs font-semibold uppercase tracking-wider text-blue-800/60 dark:text-blue-300/60 mb-1">アーキテクチャ・設計の特徴</h4>
+                                    <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                                        {repoDetails.aiReport.architecture}
+                                    </p>
+                                </div>
+
+                                <div className="pt-4 border-t border-blue-200/50 dark:border-blue-800/40">
+                                    <h4 className="text-xs font-semibold uppercase tracking-wider text-blue-800/60 dark:text-blue-300/60 mb-3">主要技術スタック</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {repoDetails.aiReport.technologies.map((tech, idx) => (
+                                            <div key={idx} className="bg-white dark:bg-zinc-800 p-3 rounded-lg border border-blue-100 dark:border-blue-900/50 shadow-sm">
+                                                <div className="flex items-center justify-between mb-1.5 gap-2">
+                                                    <span className="font-bold text-sm text-blue-700 dark:text-blue-300 shrink-0">{tech.name}</span>
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 truncate" title={tech.purpose}>
+                                                        {tech.purpose}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2" title={tech.implementation}>
+                                                    {tech.implementation}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg text-sm text-zinc-500 italic">
+                            コード解析レポートは生成されませんでした。（リポジトリが空の場合やAPIエラー等が原因です）
+                        </div>
+                    )}
+
+                    {/* 言語情報 */}
                     <div className="mt-2">
                         <h3 className="font-semibold text-sm text-zinc-500 mb-3 uppercase tracking-wider">Languages</h3>
-
                         {repoDetails.languages.length === 0 ? (
                             <p className="text-sm text-zinc-500 italic">言語情報は検出されませんでした。</p>
                         ) : (
                             <div className="flex flex-col gap-3">
-                                {/* 割合バー */}
                                 <div className="w-full h-3 flex rounded-full overflow-hidden">
                                     {repoDetails.languages.map((lang, index) => (
                                         <div
@@ -136,8 +186,6 @@ export default function RepoSelector({
                                         />
                                     ))}
                                 </div>
-
-                                {/* 凡例リスト */}
                                 <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
                                     {repoDetails.languages.map((lang, index) => (
                                         <div key={lang.name} className="flex items-center gap-1.5">
@@ -153,23 +201,6 @@ export default function RepoSelector({
                             </div>
                         )}
                     </div>
-
-                    {/* 依存関係 (ライブラリ/フレームワーク) の表示 */}
-                    {repoDetails.dependencies && repoDetails.dependencies.length > 0 && (
-                        <div className="mt-4 pt-4 border-t dark:border-zinc-700">
-                            <h3 className="font-semibold text-sm text-zinc-500 mb-3 uppercase tracking-wider">Major Technologies</h3>
-                            <div className="flex flex-wrap gap-2">
-                                {repoDetails.dependencies.map((dep) => (
-                                    <span
-                                        key={dep}
-                                        className="px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 rounded-md border border-blue-200 dark:border-blue-800"
-                                    >
-                                        {dep}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
                 </div>
             )}
         </div>

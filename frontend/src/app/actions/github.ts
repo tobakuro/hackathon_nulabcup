@@ -34,151 +34,158 @@ export async function getRepoLanguages(
     return data;
 }
 
+import { GoogleGenerativeAI, Schema, SchemaType } from "@google/generative-ai";
+
+export interface TechDetails {
+    name: string;
+    purpose: string;
+    implementation: string;
+}
+
+export interface AIAnalysisReport {
+    summary: string;
+    architecture: string;
+    technologies: TechDetails[];
+}
+
 /**
- * Server Action: 指定したリポジトリの各種設定ファイルを取得し、主要な依存関係を抽出する
+ * Server Action: 指定したリポジトリの各種ファイルを取得し、Gemini APIで解析して詳細レポートを返す
  * @param owner リポジトリのオーナー名
  * @param repo リポジトリ名
  * @param defaultBranch デフォルトブランチ名 (main, masterなど)
  * @param accessToken ユーザーのGitHubアクセストークン
- * @returns 抽出されたライブラリ/フレームワーク名の配列 (例: ["react", "next", "tailwindcss"])
  */
 export async function getRepoDependencies(
     owner: string,
     repo: string,
     defaultBranch: string,
     accessToken: string
-): Promise<string[]> {
+): Promise<AIAnalysisReport | null> {
     if (!owner || !repo || !defaultBranch || !accessToken) {
         throw new Error("Invalid parameters");
     }
 
-    const dependencies: string[] = [];
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        console.error("GEMINI_API_KEY is not defined.");
+        return null;
+    }
+
     const headers = {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/vnd.github.v3+json",
     };
 
     try {
-        // 1. Git Trees APIでリポジトリのファイル・ディレクトリ構造を一括取得
+        // 1. Git Trees APIでリポジトリ構造を一括取得
         const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`, { headers, cache: "no-store" });
-        if (!treeRes.ok) return dependencies;
+        if (!treeRes.ok) return null;
 
         const treeData = await treeRes.json();
-        if (!treeData.tree || !Array.isArray(treeData.tree)) return dependencies;
+        if (!treeData.tree || !Array.isArray(treeData.tree)) return null;
 
-        // 2. 解析対象のファイル名リスト
-        const targetNames = [
-            "package.json", "go.mod", "requirements.txt", "pipfile", "pyproject.toml",
-            "composer.json", "pom.xml", "build.gradle", "pubspec.yaml", "gemfile"
-        ];
-
-        // 解析不要なディレクトリを除外（node_modulesやvenvなど）
-        const ignoreDirs = ["node_modules/", "vendor/", "venv/", ".venv/", "env/", ".env/", "dist/", "build/", "out/", "bin/", "obj/", ".git/"];
+        // 2. 「ビジネスロジックの匂いがするファイル」や「設定ファイル」を抽出
+        const configNames = ["package.json", "go.mod", "requirements.txt", "composer.json", "pom.xml", "pubspec.yaml"];
+        const ignoreDirs = ["node_modules/", "vendor/", "venv/", ".venv/", "dist/", "build/", "out/", ".git/"];
 
         const targetFiles = treeData.tree.filter((item: { type: string; path: string }) => {
             if (item.type !== "blob") return false;
-            // 無視するディレクトリ配下ならスキップ
-            if (ignoreDirs.some(dir => item.path.includes(dir))) return false;
 
-            const name = item.path.split("/").pop()?.toLowerCase() || "";
-            return targetNames.includes(name) || name.endsWith(".csproj");
-        }).slice(0, 15); // API制限を考慮し、最大15ファイルまでに制限
+            // 無視するディレクトリ配下やテストコード、画像はスキップ
+            const lowerPath = item.path.toLowerCase();
+            if (ignoreDirs.some(dir => lowerPath.includes(dir))) return false;
+            if (lowerPath.includes("test") || lowerPath.endsWith(".png") || lowerPath.endsWith(".svg") || lowerPath.endsWith(".jpg")) return false;
+            if (lowerPath.endsWith(".lock") || lowerPath.endsWith("-lock.json")) return false;
 
-        // 3. 各ファイルのBase64中身を取得してパースするヘルパー関数
-        const fetchAndParse = async (path: string) => {
+            const name = lowerPath.split("/").pop() || "";
+
+            // 設定ファイル、README、または主要実装ディレクトリ内のコードをピックアップ
+            if (name === "readme.md" || configNames.includes(name)) return true;
+            if (lowerPath.includes("src/") || lowerPath.includes("app/") || lowerPath.includes("lib/") || lowerPath.includes("handlers/")) {
+                return name.endsWith(".ts") || name.endsWith(".js") || name.endsWith(".go") || name.endsWith(".py") || name.endsWith(".php") || name.endsWith(".dart") || name.endsWith(".cs") || name.endsWith(".rb");
+            }
+            return false;
+        }).slice(0, 20); // APIとトークン制限を考慮し、最大20ファイルに制限
+
+        if (targetFiles.length === 0) return null;
+
+        // 3. ファイルの中身を並列取得し、1つの巨大なテキストに結合
+        const fetchContent = async (path: string) => {
             try {
                 const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, { headers, cache: "no-store" });
-                if (!res.ok) return;
-
+                if (!res.ok) return "";
                 const data = await res.json();
-                if (!data.content) return;
+                if (!data.content) return "";
 
-                const decodedText = Buffer.from(data.content, "base64").toString("utf-8");
-                const name = path.split("/").pop()?.toLowerCase() || "";
-
-                // 重複なく配列に追加する関数
-                const addDeps = (found: string[]) => {
-                    for (const f of found) {
-                        if (f && !dependencies.includes(f)) dependencies.push(f);
-                    }
-                };
-
-                if (name === "package.json") {
-                    try {
-                        const pkg = JSON.parse(decodedText);
-                        const allDeps = Object.keys(pkg.dependencies || {}).concat(Object.keys(pkg.devDependencies || {}));
-                        const libs = ["react", "next", "vue", "nuxt", "svelte", "@angular/core", "tailwindcss", "prisma", "drizzle-orm", "express", "fastify", "@nestjs/core", "astro"];
-                        const found = allDeps.filter(d => libs.includes(d) || d.startsWith("@vitejs/") || d.startsWith("eslint"));
-                        addDeps(found.map(f => f === "@nestjs/core" ? "nestjs" : f));
-                    } catch { /* ignore parse error */ }
-                }
-                else if (name === "go.mod") {
-                    const goLibs = [
-                        { path: "gin-gonic/gin", name: "gin" }, { path: "labstack/echo", name: "echo" },
-                        { path: "gofiber/fiber", name: "fiber" }, { path: "gorm.io/gorm", name: "gorm" },
-                        { path: "jmoiron/sqlx", name: "sqlx" }, { path: "gorilla/websocket", name: "websocket" },
-                        { path: "joho/godotenv", name: "godotenv" }, { path: "lib/pq", name: "postgres" },
-                        { path: "redis/go-redis", name: "redis" }
-                    ];
-                    addDeps(goLibs.filter(lib => decodedText.includes(lib.path)).map(l => l.name));
-                }
-                else if (name === "requirements.txt" || name === "pipfile" || name === "pyproject.toml") {
-                    const pyLibs = ["django", "flask", "fastapi", "requests", "numpy", "pandas", "tensorflow", "torch", "scikit-learn", "sqlalchemy", "celery", "pytest"];
-                    const lowerText = decodedText.toLowerCase();
-                    addDeps(pyLibs.filter(lib => lowerText.includes(lib)));
-                }
-                else if (name === "composer.json") {
-                    try {
-                        const pkg = JSON.parse(decodedText);
-                        const allDeps = Object.keys(pkg.require || {}).concat(Object.keys(pkg["require-dev"] || {}));
-                        const phpLibs = {
-                            "laravel/framework": "laravel", "symfony/symfony": "symfony",
-                            "guzzlehttp/guzzle": "guzzle", "phpunit/phpunit": "phpunit",
-                            "cakephp/cakephp": "cakephp", "codeigniter4/framework": "codeigniter"
-                        };
-                        const found = allDeps.filter(d => Object.keys(phpLibs).includes(d)).map(d => phpLibs[d as keyof typeof phpLibs]);
-                        addDeps(found.map(String));
-                    } catch { /* ignore parse error */ }
-                }
-                else if (name === "pom.xml" || name === "build.gradle") {
-                    const javaLibs = ["spring-boot", "hibernate", "junit", "lombok", "mockito", "quartz"];
-                    const lowerText = decodedText.toLowerCase();
-                    addDeps(javaLibs.filter(lib => lowerText.includes(lib)));
-                }
-                else if (name === "pubspec.yaml") {
-                    const dartLibs = ["flutter", "provider", "riverpod", "get", "bloc", "http", "dio"];
-                    const lowerText = decodedText.toLowerCase();
-                    addDeps(dartLibs.filter(lib => lowerText.includes(lib + ":")));
-                }
-                else if (name.endsWith(".csproj")) {
-                    const csLibs = [
-                        { scan: "Microsoft.AspNetCore", name: "asp.net-core" },
-                        { scan: "EntityFrameworkCore", name: "entity-framework" },
-                        { scan: "Newtonsoft.Json", name: "newtonsoft-json" },
-                        { scan: "Serilog", name: "serilog" },
-                        { scan: "MediatR", name: "mediatr" },
-                        { scan: "xunit", name: "xunit" },
-                        { scan: "NUnit", name: "nunit" }
-                    ];
-                    addDeps(csLibs.filter(lib => decodedText.includes(lib.scan)).map(l => l.name));
-                }
-                else if (name === "gemfile") {
-                    const rubyLibs = ["rails", "sinatra", "rspec", "devise", "sidekiq", "puma"];
-                    const lowerText = decodedText.toLowerCase();
-                    addDeps(rubyLibs.filter(lib => lowerText.includes(`gem '${lib}'`) || lowerText.includes(`gem "${lib}"`)));
-                }
-
-            } catch (e) {
-                console.error(`Failed to fetch/parse ${path}:`, e);
+                const decoded = Buffer.from(data.content, "base64").toString("utf-8");
+                return `\n\n=== ${path} ===\n${decoded}`;
+            } catch {
+                return "";
             }
         };
 
-        // 並列で最大15ファイルをリクエストして中身をパース
-        await Promise.allSettled(targetFiles.map((file: { path: string }) => fetchAndParse(file.path)));
+        const contents = await Promise.allSettled(targetFiles.map((file: { path: string }) => fetchContent(file.path)));
+        let combinedText = "";
+        for (const result of contents) {
+            if (result.status === "fulfilled") combinedText += result.value;
+        }
+
+        if (combinedText.trim() === "") return null;
+
+        if (combinedText.length > 100000) {
+            combinedText = combinedText.substring(0, 100000) + "\n... (truncated)";
+        }
+
+        // 4. Gemini APIに渡して構造化出力 (JSON) を生成させる
+        const genAI = new GoogleGenerativeAI(apiKey);
+
+        const responseSchema: Schema = {
+            type: SchemaType.OBJECT,
+            properties: {
+                summary: {
+                    type: SchemaType.STRING,
+                    description: "プロジェクト全体が主に何をするアプリ・システムなのかを簡潔に説明（〜150文字）",
+                },
+                architecture: {
+                    type: SchemaType.STRING,
+                    description: "全体的な設計手法や工夫点、フロントエンドとバックエンドの繋がりなどの特徴（〜200文字）",
+                },
+                technologies: {
+                    type: SchemaType.ARRAY,
+                    description: "使われている主要な技術（最大8個）。eslintなどの単なるビルド/テストツールは省き、プロダクトのコアに直結するライブラリ（MediaPipe、Next.js、Supabaseなど）を抽出すること。",
+                    items: {
+                        type: SchemaType.OBJECT,
+                        properties: {
+                            name: { type: SchemaType.STRING, description: "技術名 (例: 'React', 'MediaPipe', 'Gin')" },
+                            purpose: { type: SchemaType.STRING, description: "何のために使っているかの一言説明 (例: 'UI構築', '顔認識アルゴリズム')" },
+                            implementation: { type: SchemaType.STRING, description: "どう実装されているかの具体的な概要 (例: 'カメラ映像を解析しランドマークを抽出')" },
+                        },
+                        required: ["name", "purpose", "implementation"],
+                    },
+                },
+            },
+            required: ["summary", "architecture", "technologies"],
+        };
+
+        const model = genAI.getGenerativeModel({
+            model: "gemini-2.5-flash",
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: responseSchema,
+            },
+        });
+
+        const prompt = `以下のソースコードファイル群を解析し、このリポジトリの概要、アーキテクチャ、および使用技術を日本語でJSON形式で出力してください。\n\n${combinedText}`;
+
+        const result = await model.generateContent(prompt);
+        const reportText = result.response.text();
+        const report = JSON.parse(reportText) as AIAnalysisReport;
+
+        return report;
 
     } catch (e) {
-        console.error("Failed to fetch tree:", e);
+        console.error("AI Analysis failed:", e);
+        return null;
     }
-
-    return dependencies;
 }
+
