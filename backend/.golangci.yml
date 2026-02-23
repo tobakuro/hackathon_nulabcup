@@ -1,22 +1,25 @@
+version: "2"
+
 run:
   timeout: 5m
 
 linters:
   enable:
-    - gofmt
     - govet
     - errcheck
     - staticcheck
-    - gosimple
     - ineffassign
     - unused
+  settings:
+    govet:
+      enable-all: true
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
 
-linters-settings:
-  govet:
-    enable-all: true
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
+formatters:
+  enable:
+    - gofmt
 
 issues:
   exclude-rules:
