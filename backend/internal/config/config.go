@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/caarlos0/env/v11"
@@ -34,7 +35,9 @@ func (c *Config) DSN() string {
 }
 
 func Load() (*Config, error) {
-	_ = godotenv.Load()
+	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
+		log.Printf("failed to load .env: %v", err)
+	}
 
 	cfg, err := env.ParseAs[Config]()
 	if err != nil {

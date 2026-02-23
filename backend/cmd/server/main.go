@@ -26,7 +26,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to db: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("failed to close db: %v", closeErr)
+		}
+	}()
 	log.Println("connected to PostgreSQL")
 
 	// Redis
@@ -34,7 +38,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to redis: %v", err)
 	}
-	defer rdb.Close()
+	defer func() {
+		if err := rdb.Close(); err != nil {
+			log.Printf("failed to close redis: %v", err)
+		}
+	}()
 	log.Println("connected to Redis")
 
 	// DI

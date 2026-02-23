@@ -94,7 +94,11 @@ func (h *MatchmakeHandler) HandleMatchmake(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	defer ws.Close()
+	defer func() {
+		if err := ws.Close(); err != nil {
+			log.Printf("matchmake: ws close error: %v", err)
+		}
+	}()
 
 	// JoinQueue を先に呼び出し、成功後に Register する
 	if err := h.hub.usecase.JoinQueue(ctx, userID); err != nil {
