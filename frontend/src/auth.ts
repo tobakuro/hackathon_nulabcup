@@ -38,8 +38,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub ?? "";
-        (session.user as Record<string, unknown>).github_id = token.github_id;
-        (session.user as Record<string, unknown>).github_login = token.github_login;
+        (session.user as unknown as Record<string, unknown>).github_id = token.github_id;
+        (session.user as unknown as Record<string, unknown>).github_login = token.github_login;
       }
       return session;
     },
