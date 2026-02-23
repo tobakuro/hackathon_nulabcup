@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,9 +16,9 @@ import (
 var ErrAlreadyInQueue = errors.New("already_in_queue")
 
 type MatchmakingResult struct {
-	Room     *entity.Room
-	Player1  *entity.User
-	Player2  *entity.User
+	Room    *entity.Room
+	Player1 *entity.User
+	Player2 *entity.User
 }
 
 type MatchmakingUsecase struct {
@@ -48,7 +49,9 @@ func (uc *MatchmakingUsecase) JoinQueue(ctx context.Context, userID uuid.UUID) e
 	}
 
 	if err := uc.matchmakingRepo.Enqueue(ctx, userID); err != nil {
-		uc.matchmakingRepo.ClearActive(ctx, userID)
+		if clearErr := uc.matchmakingRepo.ClearActive(ctx, userID); clearErr != nil {
+			log.Printf("matchmaking: clear active on enqueue failure: %v", clearErr)
+		}
 		return fmt.Errorf("enqueue: %w", err)
 	}
 	return nil
@@ -75,12 +78,20 @@ func (uc *MatchmakingUsecase) TryMatch(ctx context.Context) (*MatchmakingResult,
 
 	// Dequeue 成功後のエラーパスでは active フラグをクリアしてキューに戻す
 	clearBoth := func() {
-		uc.matchmakingRepo.ClearActive(ctx, p1ID)
-		uc.matchmakingRepo.ClearActive(ctx, p2ID)
+		if clearErr := uc.matchmakingRepo.ClearActive(ctx, p1ID); clearErr != nil {
+			log.Printf("matchmaking: clear active p1: %v", clearErr)
+		}
+		if clearErr := uc.matchmakingRepo.ClearActive(ctx, p2ID); clearErr != nil {
+			log.Printf("matchmaking: clear active p2: %v", clearErr)
+		}
 	}
 	requeueBoth := func() {
-		uc.matchmakingRepo.Enqueue(ctx, p1ID)
-		uc.matchmakingRepo.Enqueue(ctx, p2ID)
+		if reqErr := uc.matchmakingRepo.Enqueue(ctx, p1ID); reqErr != nil {
+			log.Printf("matchmaking: requeue p1: %v", reqErr)
+		}
+		if reqErr := uc.matchmakingRepo.Enqueue(ctx, p2ID); reqErr != nil {
+			log.Printf("matchmaking: requeue p2: %v", reqErr)
+		}
 	}
 
 	// ユーザー情報取得

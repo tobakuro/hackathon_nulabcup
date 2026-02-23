@@ -21,7 +21,11 @@ func (h *RoomHandler) HandleRoom(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	defer ws.Close()
+	defer func() {
+		if err := ws.Close(); err != nil {
+			log.Printf("room %s: ws close error: %v", roomID, err)
+		}
+	}()
 
 	log.Printf("room %s: new connection from %s", roomID, ws.RemoteAddr())
 

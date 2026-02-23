@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/caarlos0/env/v11"
@@ -9,15 +10,15 @@ import (
 )
 
 type Config struct {
-	ServerPort int    `env:"SERVER_PORT" envDefault:"8080"`
 	DBHost     string `env:"DB_HOST"`
-	DBPort     int    `env:"DB_PORT" envDefault:"5432"`
 	DBUser     string `env:"DB_USER"`
 	DBPassword string `env:"DB_PASSWORD"`
 	DBName     string `env:"DB_NAME" envDefault:"hackathon"`
 	DBSSLMode  string `env:"DB_SSLMODE" envDefault:"disable"`
 	RedisAddr  string `env:"REDIS_ADDR" envDefault:"localhost:6379"`
 	RedisPW    string `env:"REDIS_PASSWORD" envDefault:""`
+	ServerPort int    `env:"SERVER_PORT" envDefault:"8080"`
+	DBPort     int    `env:"DB_PORT" envDefault:"5432"`
 	RedisDB    int    `env:"REDIS_DB" envDefault:"0"`
 }
 
@@ -34,7 +35,9 @@ func (c *Config) DSN() string {
 }
 
 func Load() (*Config, error) {
-	_ = godotenv.Load()
+	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
+		log.Printf("failed to load .env: %v", err)
+	}
 
 	cfg, err := env.ParseAs[Config]()
 	if err != nil {

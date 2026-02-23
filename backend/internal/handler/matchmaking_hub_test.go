@@ -68,7 +68,11 @@ func TestHub_SendToUser_WithConnection(t *testing.T) {
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
 	clientConn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	require.NoError(t, err)
-	defer clientConn.Close()
+	defer func() {
+		if closeErr := clientConn.Close(); closeErr != nil {
+			t.Logf("clientConn close error: %v", closeErr)
+		}
+	}()
 
 	// Wait for server-side Register to complete before sending
 	wg.Wait()

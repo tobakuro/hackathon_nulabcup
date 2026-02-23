@@ -13,14 +13,14 @@ import (
 )
 
 type WSMessage struct {
-	Type    string      `json:"type"`
-	Payload any `json:"payload"`
+	Payload any    `json:"payload"`
+	Type    string `json:"type"`
 }
 
 type Hub struct {
 	connections map[uuid.UUID]*websocket.Conn
-	mu          sync.RWMutex
 	usecase     *usecase.MatchmakingUsecase
+	mu          sync.RWMutex
 }
 
 func NewHub(uc *usecase.MatchmakingUsecase) *Hub {

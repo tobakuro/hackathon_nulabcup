@@ -1,0 +1,39 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "devbox.json"
+      - "devbox.lock"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "devbox.json"
+      - "devbox.lock"
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup devbox
+        uses: jetify-com/devbox-install-action@v0.12.0
+        with:
+          enable-cache: true
+
+      - name: Format check
+        run: devbox run -- sh -c "cd backend && gofmt -l . | tee /tmp/gofmt.out && [ ! -s /tmp/gofmt.out ]"
+
+      - name: Lint
+        run: devbox run -- sh -c "cd backend && golangci-lint run ./..."
+
+      - name: Build
+        run: devbox run -- sh -c "cd backend && go build -o bin/server ./cmd/server"
+
+      - name: Test
+        run: devbox run -- sh -c "cd backend && go test ./..."

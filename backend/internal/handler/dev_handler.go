@@ -13,8 +13,8 @@ import (
 )
 
 type DevHandler struct {
-	userRepo        repository.UserRepository
-	matchmakingUC   *usecase.MatchmakingUsecase
+	userRepo      repository.UserRepository
+	matchmakingUC *usecase.MatchmakingUsecase
 }
 
 func NewDevHandler(userRepo repository.UserRepository, matchmakingUC *usecase.MatchmakingUsecase) *DevHandler {
