@@ -8,45 +8,45 @@
  * @returns 言語名とバイト数のオブジェクト (例: { "TypeScript": 1000, "HTML": 500 })
  */
 export async function getRepoLanguages(
-    owner: string,
-    repo: string,
-    accessToken: string
+  owner: string,
+  repo: string,
+  accessToken: string,
 ): Promise<Record<string, number>> {
-    if (!owner || !repo || !accessToken) {
-        throw new Error("Invalid parameters");
-    }
+  if (!owner || !repo || !accessToken) {
+    throw new Error("Invalid parameters");
+  }
 
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/languages`, {
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/vnd.github.v3+json",
-        },
-        // 言語構成は頻繁に変わるものではないのでキャッシュを効かせつつ、再検証の余地を残すことも可能
-        // 今回は最新を取るために no-store にしています
-        cache: "no-store",
-    });
+  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/languages`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/vnd.github.v3+json",
+    },
+    // 言語構成は頻繁に変わるものではないのでキャッシュを効かせつつ、再検証の余地を残すことも可能
+    // 今回は最新を取るために no-store にしています
+    cache: "no-store",
+  });
 
-    if (!res.ok) {
-        throw new Error(`Failed to fetch languages: ${res.statusText}`);
-    }
+  if (!res.ok) {
+    throw new Error(`Failed to fetch languages: ${res.statusText}`);
+  }
 
-    const data = await res.json();
-    return data;
+  const data = await res.json();
+  return data;
 }
 
 import { GoogleGenerativeAI, Schema, SchemaType } from "@google/generative-ai";
 
 export interface TechDetails {
-    name: string;
-    purpose: string;
-    implementation: string;
+  name: string;
+  purpose: string;
+  implementation: string;
 }
 
 export interface AIAnalysisReport {
-    summary: string;
-    architecture: string;
-    technologies: TechDetails[];
-    analyzedFiles: string[];
+  summary: string;
+  architecture: string;
+  technologies: TechDetails[];
+  analyzedFiles: string[];
 }
 
 /**
@@ -57,137 +57,195 @@ export interface AIAnalysisReport {
  * @param accessToken ユーザーのGitHubアクセストークン
  */
 export async function getRepoDependencies(
-    owner: string,
-    repo: string,
-    defaultBranch: string,
-    accessToken: string
+  owner: string,
+  repo: string,
+  defaultBranch: string,
+  accessToken: string,
 ): Promise<AIAnalysisReport | null> {
-    if (!owner || !repo || !defaultBranch || !accessToken) {
-        throw new Error("Invalid parameters");
-    }
+  if (!owner || !repo || !defaultBranch || !accessToken) {
+    throw new Error("Invalid parameters");
+  }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-        console.error("GEMINI_API_KEY is not defined.");
-        return null;
-    }
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.error("GEMINI_API_KEY is not defined.");
+    return null;
+  }
 
-    const headers = {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/vnd.github.v3+json",
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    Accept: "application/vnd.github.v3+json",
+  };
+
+  try {
+    // 1. Git Trees APIでリポジトリ構造を一括取得
+    const treeRes = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`,
+      { headers, cache: "no-store" },
+    );
+    if (!treeRes.ok) return null;
+
+    const treeData = await treeRes.json();
+    if (!treeData.tree || !Array.isArray(treeData.tree)) return null;
+
+    // 2. 「ビジネスロジックの匂いがするファイル」や「設定ファイル」を抽出
+    const configNames = [
+      "package.json",
+      "go.mod",
+      "requirements.txt",
+      "composer.json",
+      "pom.xml",
+      "pubspec.yaml",
+    ];
+    const ignoreDirs = [
+      "node_modules/",
+      "vendor/",
+      "venv/",
+      ".venv/",
+      "dist/",
+      "build/",
+      "out/",
+      ".git/",
+    ];
+
+    const targetFiles = treeData.tree
+      .filter((item: { type: string; path: string }) => {
+        if (item.type !== "blob") return false;
+
+        // 無視するディレクトリ配下やテストコード、画像はスキップ
+        const lowerPath = item.path.toLowerCase();
+        if (ignoreDirs.some((dir) => lowerPath.includes(dir))) return false;
+        if (
+          lowerPath.includes("test") ||
+          lowerPath.endsWith(".png") ||
+          lowerPath.endsWith(".svg") ||
+          lowerPath.endsWith(".jpg")
+        )
+          return false;
+        if (lowerPath.endsWith(".lock") || lowerPath.endsWith("-lock.json")) return false;
+
+        const name = lowerPath.split("/").pop() || "";
+
+        // 設定ファイル、README、または主要実装ディレクトリ内のコードをピックアップ
+        if (name === "readme.md" || configNames.includes(name)) return true;
+        if (
+          lowerPath.includes("src/") ||
+          lowerPath.includes("app/") ||
+          lowerPath.includes("lib/") ||
+          lowerPath.includes("handlers/")
+        ) {
+          return (
+            name.endsWith(".ts") ||
+            name.endsWith(".js") ||
+            name.endsWith(".go") ||
+            name.endsWith(".py") ||
+            name.endsWith(".php") ||
+            name.endsWith(".dart") ||
+            name.endsWith(".cs") ||
+            name.endsWith(".rb")
+          );
+        }
+        return false;
+      })
+      .slice(0, 20); // APIとトークン制限を考慮し、最大20ファイルに制限
+
+    if (targetFiles.length === 0) return null;
+
+    // 3. ファイルの中身を並列取得し、1つの巨大なテキストに結合
+    const fetchContent = async (path: string) => {
+      try {
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          headers,
+          cache: "no-store",
+        });
+        if (!res.ok) return "";
+        const data = await res.json();
+        if (!data.content) return "";
+
+        const decoded = Buffer.from(data.content, "base64").toString("utf-8");
+        return `\n\n=== ${path} ===\n${decoded}`;
+      } catch {
+        return "";
+      }
     };
 
-    try {
-        // 1. Git Trees APIでリポジトリ構造を一括取得
-        const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`, { headers, cache: "no-store" });
-        if (!treeRes.ok) return null;
+    const contents = await Promise.allSettled(
+      targetFiles.map((file: { path: string }) => fetchContent(file.path)),
+    );
+    let combinedText = "";
+    for (const result of contents) {
+      if (result.status === "fulfilled") combinedText += result.value;
+    }
 
-        const treeData = await treeRes.json();
-        if (!treeData.tree || !Array.isArray(treeData.tree)) return null;
+    if (combinedText.trim() === "") return null;
 
-        // 2. 「ビジネスロジックの匂いがするファイル」や「設定ファイル」を抽出
-        const configNames = ["package.json", "go.mod", "requirements.txt", "composer.json", "pom.xml", "pubspec.yaml"];
-        const ignoreDirs = ["node_modules/", "vendor/", "venv/", ".venv/", "dist/", "build/", "out/", ".git/"];
+    if (combinedText.length > 100000) {
+      combinedText = combinedText.substring(0, 100000) + "\n... (truncated)";
+    }
 
-        const targetFiles = treeData.tree.filter((item: { type: string; path: string }) => {
-            if (item.type !== "blob") return false;
+    // 4. Gemini APIに渡して構造化出力 (JSON) を生成させる
+    const genAI = new GoogleGenerativeAI(apiKey);
 
-            // 無視するディレクトリ配下やテストコード、画像はスキップ
-            const lowerPath = item.path.toLowerCase();
-            if (ignoreDirs.some(dir => lowerPath.includes(dir))) return false;
-            if (lowerPath.includes("test") || lowerPath.endsWith(".png") || lowerPath.endsWith(".svg") || lowerPath.endsWith(".jpg")) return false;
-            if (lowerPath.endsWith(".lock") || lowerPath.endsWith("-lock.json")) return false;
-
-            const name = lowerPath.split("/").pop() || "";
-
-            // 設定ファイル、README、または主要実装ディレクトリ内のコードをピックアップ
-            if (name === "readme.md" || configNames.includes(name)) return true;
-            if (lowerPath.includes("src/") || lowerPath.includes("app/") || lowerPath.includes("lib/") || lowerPath.includes("handlers/")) {
-                return name.endsWith(".ts") || name.endsWith(".js") || name.endsWith(".go") || name.endsWith(".py") || name.endsWith(".php") || name.endsWith(".dart") || name.endsWith(".cs") || name.endsWith(".rb");
-            }
-            return false;
-        }).slice(0, 20); // APIとトークン制限を考慮し、最大20ファイルに制限
-
-        if (targetFiles.length === 0) return null;
-
-        // 3. ファイルの中身を並列取得し、1つの巨大なテキストに結合
-        const fetchContent = async (path: string) => {
-            try {
-                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, { headers, cache: "no-store" });
-                if (!res.ok) return "";
-                const data = await res.json();
-                if (!data.content) return "";
-
-                const decoded = Buffer.from(data.content, "base64").toString("utf-8");
-                return `\n\n=== ${path} ===\n${decoded}`;
-            } catch {
-                return "";
-            }
-        };
-
-        const contents = await Promise.allSettled(targetFiles.map((file: { path: string }) => fetchContent(file.path)));
-        let combinedText = "";
-        for (const result of contents) {
-            if (result.status === "fulfilled") combinedText += result.value;
-        }
-
-        if (combinedText.trim() === "") return null;
-
-        if (combinedText.length > 100000) {
-            combinedText = combinedText.substring(0, 100000) + "\n... (truncated)";
-        }
-
-        // 4. Gemini APIに渡して構造化出力 (JSON) を生成させる
-        const genAI = new GoogleGenerativeAI(apiKey);
-
-        const responseSchema: Schema = {
+    const responseSchema: Schema = {
+      type: SchemaType.OBJECT,
+      properties: {
+        summary: {
+          type: SchemaType.STRING,
+          description:
+            "プロジェクト全体が主に何をするアプリ・システムなのかを簡潔に説明（〜150文字）",
+        },
+        architecture: {
+          type: SchemaType.STRING,
+          description:
+            "全体的な設計手法や工夫点、フロントエンドとバックエンドの繋がりなどの特徴（〜200文字）",
+        },
+        technologies: {
+          type: SchemaType.ARRAY,
+          description:
+            "使われている主要な技術（最大8個）。eslintなどの単なるビルド/テストツールは省き、プロダクトのコアに直結するライブラリ（MediaPipe、Next.js、Supabaseなど）を抽出すること。",
+          items: {
             type: SchemaType.OBJECT,
             properties: {
-                summary: {
-                    type: SchemaType.STRING,
-                    description: "プロジェクト全体が主に何をするアプリ・システムなのかを簡潔に説明（〜150文字）",
-                },
-                architecture: {
-                    type: SchemaType.STRING,
-                    description: "全体的な設計手法や工夫点、フロントエンドとバックエンドの繋がりなどの特徴（〜200文字）",
-                },
-                technologies: {
-                    type: SchemaType.ARRAY,
-                    description: "使われている主要な技術（最大8個）。eslintなどの単なるビルド/テストツールは省き、プロダクトのコアに直結するライブラリ（MediaPipe、Next.js、Supabaseなど）を抽出すること。",
-                    items: {
-                        type: SchemaType.OBJECT,
-                        properties: {
-                            name: { type: SchemaType.STRING, description: "技術名 (例: 'React', 'MediaPipe', 'Gin')" },
-                            purpose: { type: SchemaType.STRING, description: "何のために使っているかの一言説明 (例: 'UI構築', '顔認識アルゴリズム')" },
-                            implementation: { type: SchemaType.STRING, description: "どう実装されているかの具体的な概要 (例: 'カメラ映像を解析しランドマークを抽出')" },
-                        },
-                        required: ["name", "purpose", "implementation"],
-                    },
-                },
+              name: {
+                type: SchemaType.STRING,
+                description: "技術名 (例: 'React', 'MediaPipe', 'Gin')",
+              },
+              purpose: {
+                type: SchemaType.STRING,
+                description:
+                  "何のために使っているかの一言説明 (例: 'UI構築', '顔認識アルゴリズム')",
+              },
+              implementation: {
+                type: SchemaType.STRING,
+                description:
+                  "どう実装されているかの具体的な概要 (例: 'カメラ映像を解析しランドマークを抽出')",
+              },
             },
-            required: ["summary", "architecture", "technologies"],
-        };
+            required: ["name", "purpose", "implementation"],
+          },
+        },
+      },
+      required: ["summary", "architecture", "technologies"],
+    };
 
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: responseSchema,
-            },
-        });
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: responseSchema,
+      },
+    });
 
-        const prompt = `以下のソースコードファイル群を解析し、このリポジトリの概要、アーキテクチャ、および使用技術を日本語でJSON形式で出力してください。\n\n${combinedText}`;
+    const prompt = `以下のソースコードファイル群を解析し、このリポジトリの概要、アーキテクチャ、および使用技術を日本語でJSON形式で出力してください。\n\n${combinedText}`;
 
-        const result = await model.generateContent(prompt);
-        const reportText = result.response.text();
-        const report = JSON.parse(reportText) as AIAnalysisReport;
-        report.analyzedFiles = targetFiles.map((file: { path: string }) => file.path);
+    const result = await model.generateContent(prompt);
+    const reportText = result.response.text();
+    const report = JSON.parse(reportText) as AIAnalysisReport;
+    report.analyzedFiles = targetFiles.map((file: { path: string }) => file.path);
 
-        return report;
-
-    } catch (e) {
-        console.error("AI Analysis failed:", e);
-        return null;
-    }
+    return report;
+  } catch (e) {
+    console.error("AI Analysis failed:", e);
+    return null;
+  }
 }
-
