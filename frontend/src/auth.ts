@@ -1,15 +1,21 @@
 import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 
+// ビルド時にはダミー値を使用、実行時には実際の値が必要
+const GITHUB_ID = process.env.GITHUB_ID || "dummy-id";
+const GITHUB_SECRET = process.env.GITHUB_SECRET || "dummy-secret";
+
+// 環境変数が設定されていない場合は警告を出力
 if (!process.env.GITHUB_ID || !process.env.GITHUB_SECRET) {
-  throw new Error("Missing GITHUB_ID or GITHUB_SECRET");
+  console.warn("⚠️  GITHUB_ID or GITHUB_SECRET is not set. Using dummy values for build.");
+  console.warn("⚠️  GitHub authentication will not work without proper environment variables.");
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     GitHub({
-      clientId: process.env.GITHUB_ID,
-      clientSecret: process.env.GITHUB_SECRET,
+      clientId: GITHUB_ID,
+      clientSecret: GITHUB_SECRET,
       profile(profile) {
         return {
           id: String(profile.id),
