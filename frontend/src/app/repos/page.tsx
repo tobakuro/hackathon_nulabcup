@@ -3,20 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import RepoSelector from "@/components/RepoSelector";
 
-// GitHub APIのレスポンスの型定義
-export interface GitHubRepo {
-  id: number;
-  name: string;
-  full_name: string;
-  description: string | null;
-  html_url: string;
-  language: string | null;
-  default_branch: string;
-  owner: {
-    login: string;
-  };
-}
-
+import type { GitHubRepo } from "@/types/github";
 export default async function ReposPage() {
   const session = await auth();
 

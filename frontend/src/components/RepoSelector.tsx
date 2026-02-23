@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { GitHubRepo } from "@/app/repos/page.tsx";
+import type { GitHubRepo } from "@/types/github";
 import { getRepoLanguages, getRepoDependencies, AIAnalysisReport } from "@/app/actions/github";
 
 export default function RepoSelector({
