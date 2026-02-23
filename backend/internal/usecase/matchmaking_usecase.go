@@ -69,13 +69,21 @@ func (uc *MatchmakingUsecase) TryMatch(ctx context.Context) (*MatchmakingResult,
 		return nil, nil
 	}
 
+	// Dequeue 成功後のエラーパスでは active フラグをクリアする
+	clearBoth := func() {
+		uc.matchmakingRepo.ClearActive(ctx, p1ID)
+		uc.matchmakingRepo.ClearActive(ctx, p2ID)
+	}
+
 	// ユーザー情報取得
 	player1, err := uc.userRepo.GetByID(ctx, p1ID)
 	if err != nil {
+		clearBoth()
 		return nil, fmt.Errorf("get player1: %w", err)
 	}
 	player2, err := uc.userRepo.GetByID(ctx, p2ID)
 	if err != nil {
+		clearBoth()
 		return nil, fmt.Errorf("get player2: %w", err)
 	}
 
@@ -90,12 +98,12 @@ func (uc *MatchmakingUsecase) TryMatch(ctx context.Context) (*MatchmakingResult,
 	}
 
 	if err := uc.roomRepo.Create(ctx, room); err != nil {
+		clearBoth()
 		return nil, fmt.Errorf("create room: %w", err)
 	}
 
-	// active フラグをクリア
-	uc.matchmakingRepo.ClearActive(ctx, p1ID)
-	uc.matchmakingRepo.ClearActive(ctx, p2ID)
+	// active フラグをクリア（正常系）
+	clearBoth()
 
 	return &MatchmakingResult{
 		Room:    room,
