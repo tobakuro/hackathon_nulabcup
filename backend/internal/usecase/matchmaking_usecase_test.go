@@ -166,7 +166,7 @@ func TestTryMatch_Success(t *testing.T) {
 	assert.Equal(t, player2, result.Player2)
 	assert.Equal(t, p1ID, result.Room.Player1ID)
 	assert.Equal(t, p2ID, result.Room.Player2ID)
-	assert.Equal(t, "waiting", result.Room.Status)
+	assert.Equal(t, entity.RoomStatusWaiting, result.Room.Status)
 	assert.Len(t, clearedIDs, 2)
 	assert.Contains(t, clearedIDs, p1ID)
 	assert.Contains(t, clearedIDs, p2ID)

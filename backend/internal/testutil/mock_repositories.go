@@ -17,22 +17,37 @@ type MockMatchmakingRepository struct {
 }
 
 func (m *MockMatchmakingRepository) Enqueue(ctx context.Context, userID uuid.UUID) error {
+	if m.EnqueueFunc == nil {
+		return nil
+	}
 	return m.EnqueueFunc(ctx, userID)
 }
 
 func (m *MockMatchmakingRepository) Dequeue(ctx context.Context) (uuid.UUID, uuid.UUID, error) {
+	if m.DequeueFunc == nil {
+		return uuid.Nil, uuid.Nil, nil
+	}
 	return m.DequeueFunc(ctx)
 }
 
 func (m *MockMatchmakingRepository) Remove(ctx context.Context, userID uuid.UUID) error {
+	if m.RemoveFunc == nil {
+		return nil
+	}
 	return m.RemoveFunc(ctx, userID)
 }
 
 func (m *MockMatchmakingRepository) SetActive(ctx context.Context, userID uuid.UUID) (bool, error) {
+	if m.SetActiveFunc == nil {
+		return false, nil
+	}
 	return m.SetActiveFunc(ctx, userID)
 }
 
 func (m *MockMatchmakingRepository) ClearActive(ctx context.Context, userID uuid.UUID) error {
+	if m.ClearActiveFunc == nil {
+		return nil
+	}
 	return m.ClearActiveFunc(ctx, userID)
 }
 
