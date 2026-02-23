@@ -15,9 +15,9 @@ import (
 var ErrAlreadyInQueue = errors.New("already_in_queue")
 
 type MatchmakingResult struct {
-	Room     *entity.Room
-	Player1  *entity.User
-	Player2  *entity.User
+	Room    *entity.Room
+	Player1 *entity.User
+	Player2 *entity.User
 }
 
 type MatchmakingUsecase struct {

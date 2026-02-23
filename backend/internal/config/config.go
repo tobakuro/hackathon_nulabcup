@@ -9,15 +9,15 @@ import (
 )
 
 type Config struct {
-	ServerPort int    `env:"SERVER_PORT" envDefault:"8080"`
 	DBHost     string `env:"DB_HOST"`
-	DBPort     int    `env:"DB_PORT" envDefault:"5432"`
 	DBUser     string `env:"DB_USER"`
 	DBPassword string `env:"DB_PASSWORD"`
 	DBName     string `env:"DB_NAME" envDefault:"hackathon"`
 	DBSSLMode  string `env:"DB_SSLMODE" envDefault:"disable"`
 	RedisAddr  string `env:"REDIS_ADDR" envDefault:"localhost:6379"`
 	RedisPW    string `env:"REDIS_PASSWORD" envDefault:""`
+	ServerPort int    `env:"SERVER_PORT" envDefault:"8080"`
+	DBPort     int    `env:"DB_PORT" envDefault:"5432"`
 	RedisDB    int    `env:"REDIS_DB" envDefault:"0"`
 }
 
