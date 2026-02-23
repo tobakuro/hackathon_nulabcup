@@ -1,9 +1,10 @@
 -- +goose Up
 CREATE TABLE IF NOT EXISTS rooms (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    player1_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    player2_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    status VARCHAR(50) NOT NULL DEFAULT 'waiting',
+    player1_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    player2_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    status VARCHAR(50) NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'active', 'closed')),
+    CONSTRAINT no_self_match CHECK (player1_id <> player2_id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

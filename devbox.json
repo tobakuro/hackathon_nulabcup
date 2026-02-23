@@ -19,13 +19,13 @@
       "if ! psql -lqt -h \"$PGHOST\" 2>/dev/null | cut -d '|' -f 1 | grep -qw hackathon; then echo 'データベースを作成しています...'; createdb -h \"$PGHOST\" hackathon && echo 'Created database: hackathon'; fi",
       "export GOOSE_DRIVER=postgres",
       "export GOOSE_DBSTRING=\"host=${PGHOST} user=${USER} dbname=hackathon sslmode=disable\"",
-      "export GOOSE_MIGRATION_DIR=backend/db/migrations",
-      "echo 'マイグレーションを適用しています...'; goose up && echo 'All migrations applied.' || echo 'Migration warning (may already be up to date).'"
+      "export GOOSE_MIGRATION_DIR=${DEVBOX_PROJECT_ROOT}/backend/db/migrations",
+      "echo 'マイグレーションを適用しています...'; goose_output=$(goose up 2>&1); goose_exit=$?; echo \"$goose_output\"; if [ $goose_exit -ne 0 ]; then echo \"Migration failed with exit code $goose_exit\" >&2; exit $goose_exit; else echo 'All migrations applied.'; fi"
     ],
     "scripts": {
       "db:setup": [
         "if ! psql -h \"$PGHOST\" -lqt 2>/dev/null | cut -d '|' -f 1 | grep -qw hackathon; then createdb -h \"$PGHOST\" hackathon && echo 'Created database: hackathon'; else echo 'Database hackathon already exists'; fi",
-        "GOOSE_DRIVER=postgres GOOSE_DBSTRING=\"host=${PGHOST} user=${USER} dbname=hackathon sslmode=disable\" GOOSE_MIGRATION_DIR=backend/db/migrations goose up && echo 'All migrations applied.' || echo 'Migration warning (may already be up to date).'"
+        "GOOSE_DRIVER=postgres GOOSE_DBSTRING=\"host=${PGHOST} user=${USER} dbname=hackathon sslmode=disable\" GOOSE_MIGRATION_DIR=${DEVBOX_PROJECT_ROOT}/backend/db/migrations goose up && echo 'All migrations applied.'"
       ],
       "backend:dev": [
         "cd backend && air"

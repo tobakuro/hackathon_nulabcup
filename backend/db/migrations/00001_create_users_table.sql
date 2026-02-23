@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_github_login ON users (github_login);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_github_login ON users (github_login);
 
 -- +goose Down
 DROP TABLE IF EXISTS users;
