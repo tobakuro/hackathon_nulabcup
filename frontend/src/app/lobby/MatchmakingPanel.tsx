@@ -46,10 +46,12 @@ export default function MatchmakingPanel({ user }: MatchmakingPanelProps) {
           break;
       }
     },
-    [router]
+    [router],
   );
 
-  const wsUrl = getWsUrl(`/ws/matchmake?github_login=${encodeURIComponent(user.github_login)}&github_id=${user.github_id}`);
+  const wsUrl = getWsUrl(
+    `/ws/matchmake?github_login=${encodeURIComponent(user.github_login)}&github_id=${user.github_id}`,
+  );
   const { status, connect, sendMessage, close } = useWebSocket({
     url: wsUrl,
     onMessage: handleMessage,
@@ -104,13 +106,7 @@ export default function MatchmakingPanel({ user }: MatchmakingPanelProps) {
     <div className="flex flex-col items-center gap-6 p-6 border rounded-lg shadow-sm w-full min-w-[300px]">
       <div className="flex items-center gap-3">
         {user.image && (
-          <Image
-            src={user.image}
-            alt={user.name}
-            width={40}
-            height={40}
-            className="rounded-full"
-          />
+          <Image src={user.image} alt={user.name} width={40} height={40} className="rounded-full" />
         )}
         <span className="text-zinc-900 dark:text-white font-medium">{user.name}</span>
       </div>
