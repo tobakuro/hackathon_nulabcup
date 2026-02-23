@@ -18,8 +18,10 @@ export default async function LobbyPage() {
             id: session.user.id ?? "",
             name: session.user.name ?? "",
             image: session.user.image ?? "",
-            github_login: ((session.user as Record<string, unknown>).github_login as string) || "",
-            github_id: ((session.user as Record<string, unknown>).github_id as number) || 0,
+            github_login:
+              ((session.user as unknown as Record<string, unknown>).github_login as string) || "",
+            github_id:
+              ((session.user as unknown as Record<string, unknown>).github_id as number) || 0,
           }}
         />
       </main>
