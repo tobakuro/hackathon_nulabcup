@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -92,6 +92,13 @@ export default function MatchmakingPanel({ user }: MatchmakingPanelProps) {
   };
 
   const isDisconnectedWithError = status === "error";
+
+  useEffect(() => {
+    if (matchmaking && status === "disconnected" && !isDisconnectedWithError) {
+      setMatchmaking(false);
+      setError("接続が切断されました");
+    }
+  }, [matchmaking, status, isDisconnectedWithError]);
 
   return (
     <div className="flex flex-col items-center gap-6 p-6 border rounded-lg shadow-sm w-full min-w-[300px]">
