@@ -1,0 +1,40 @@
+name: Frontend CI
+
+on:
+  push:
+    paths:
+      - "frontend/**"
+      - "devbox.json"
+      - "devbox.lock"
+  pull_request:
+    paths:
+      - "frontend/**"
+      - "devbox.json"
+      - "devbox.lock"
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup devbox
+        uses: jetify-com/devbox-install-action@v0.12.0
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: devbox run -- sh -c "cd frontend && npm ci"
+
+      - name: Format check
+        run: devbox run -- sh -c "cd frontend && npm run format:check"
+
+      - name: Lint
+        run: devbox run -- sh -c "cd frontend && npm run lint"
+
+      - name: Type check
+        run: devbox run -- sh -c "cd frontend && npm run typecheck"
+
+      - name: Build
+        run: devbox run -- sh -c "cd frontend && npm run build"
