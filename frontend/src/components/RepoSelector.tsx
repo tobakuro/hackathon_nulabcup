@@ -159,6 +159,20 @@ export default function RepoSelector({
                                         ))}
                                     </div>
                                 </div>
+
+                                {/* 解析ファイル一覧 */}
+                                {repoDetails.aiReport.analyzedFiles && repoDetails.aiReport.analyzedFiles.length > 0 && (
+                                    <div className="pt-4 border-t border-blue-200/50 dark:border-blue-800/40">
+                                        <h4 className="text-xs font-semibold uppercase tracking-wider text-blue-800/60 dark:text-blue-300/60 mb-3">解析対象ファイル ({repoDetails.aiReport.analyzedFiles.length})</h4>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {repoDetails.aiReport.analyzedFiles.map((file, idx) => (
+                                                <span key={idx} className="px-2 py-1 text-[10px] font-mono bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800/60 break-all leading-tight">
+                                                    {file}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (

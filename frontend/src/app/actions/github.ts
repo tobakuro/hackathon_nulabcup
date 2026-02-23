@@ -46,6 +46,7 @@ export interface AIAnalysisReport {
     summary: string;
     architecture: string;
     technologies: TechDetails[];
+    analyzedFiles: string[];
 }
 
 /**
@@ -180,6 +181,7 @@ export async function getRepoDependencies(
         const result = await model.generateContent(prompt);
         const reportText = result.response.text();
         const report = JSON.parse(reportText) as AIAnalysisReport;
+        report.analyzedFiles = targetFiles.map((file: { path: string }) => file.path);
 
         return report;
 
