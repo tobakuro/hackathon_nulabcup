@@ -8,7 +8,7 @@
     "air@latest",
     "golangci-lint@latest",
     "sqlc@latest",
-    "go-migrate@latest"
+    "goose@latest"
   ],
   "shell": {
     "init_hook": [
@@ -17,12 +17,15 @@
       "if ! pg_isready -h \"$PGHOST\" -q 2>/dev/null; then echo 'PostgreSQLを起動しています...'; pg_ctl start -D \"$PGDATA\" -o \"-k '$PGHOST'\" -l \"$PGDATA/postgresql.log\" -w 2>/dev/null || (devbox services up --background 2>/dev/null; true); fi",
       "echo 'PostgreSQLの起動を待っています...'; for i in $(seq 1 60); do pg_isready -h \"$PGHOST\" -q && break; sleep 1; printf '.'; done; echo ''",
       "if ! psql -lqt -h \"$PGHOST\" 2>/dev/null | cut -d '|' -f 1 | grep -qw hackathon; then echo 'データベースを作成しています...'; createdb -h \"$PGHOST\" hackathon && echo 'Created database: hackathon'; fi",
-      "echo 'マイグレーションを適用しています...'; for f in backend/db/migrations/*.sql; do echo \"Applying $f...\"; psql -h \"$PGHOST\" hackathon -f \"$f\"; done; echo 'All migrations applied.'"
+      "export GOOSE_DRIVER=postgres",
+      "export GOOSE_DBSTRING=\"host=${PGHOST} user=${USER} dbname=hackathon sslmode=disable\"",
+      "export GOOSE_MIGRATION_DIR=backend/db/migrations",
+      "echo 'マイグレーションを適用しています...'; goose up && echo 'All migrations applied.' || echo 'Migration warning (may already be up to date).'"
     ],
     "scripts": {
       "db:setup": [
         "if ! psql -h \"$PGHOST\" -lqt 2>/dev/null | cut -d '|' -f 1 | grep -qw hackathon; then createdb -h \"$PGHOST\" hackathon && echo 'Created database: hackathon'; else echo 'Database hackathon already exists'; fi",
-        "for f in backend/db/migrations/*.sql; do echo \"Applying $f...\"; psql -h \"$PGHOST\" hackathon -f \"$f\"; done; echo 'All migrations applied.'"
+        "GOOSE_DRIVER=postgres GOOSE_DBSTRING=\"host=${PGHOST} user=${USER} dbname=hackathon sslmode=disable\" GOOSE_MIGRATION_DIR=backend/db/migrations goose up && echo 'All migrations applied.' || echo 'Migration warning (may already be up to date).'"
       ],
       "backend:dev": [
         "cd backend && air"
