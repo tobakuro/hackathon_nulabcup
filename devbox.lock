@@ -53,6 +53,34 @@
       "last_modified": "2026-02-16T02:09:13Z",
       "resolved": "github:NixOS/nixpkgs/d1c15b7d5806069da59e819999d70e1cec0760bf?lastModified=1771207753"
     },
+    "glibcLocales@latest": {
+      "last_modified": "2026-01-23T17:20:52Z",
+      "resolved": "github:NixOS/nixpkgs/a1bab9e494f5f4939442a57a58d0449a109593fe#glibcLocales",
+      "source": "devbox-search",
+      "version": "2.42-47",
+      "systems": {
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/j6314ihrwj50rb1w357lfkz4v8syrq7p-glibc-locales-2.42-47",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/j6314ihrwj50rb1w357lfkz4v8syrq7p-glibc-locales-2.42-47"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/9whrn8kh4r39pf52zlbn7vim0s74qi19-glibc-locales-2.42-47",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/9whrn8kh4r39pf52zlbn7vim0s74qi19-glibc-locales-2.42-47"
+        }
+      }
+    },
     "go@1.26": {
       "last_modified": "2026-02-11T12:16:34Z",
       "resolved": "github:NixOS/nixpkgs/8482c7ded03bae7550f3d69884f1e611e3bd19e8#go_1_26",
