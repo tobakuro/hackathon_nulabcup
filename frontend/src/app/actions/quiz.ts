@@ -92,12 +92,7 @@ export async function generateQuizBatchAction(
   accessToken: string,
   targetFiles: string[],
 ): Promise<QuizBatch | null> {
-  const combinedCode = await fetchAndCombineCode(
-    owner,
-    repo,
-    accessToken,
-    targetFiles,
-  );
+  const combinedCode = await fetchAndCombineCode(owner, repo, accessToken, targetFiles);
   if (!combinedCode) return null;
 
   const apiKey = process.env.GEMINI_API_KEY;
