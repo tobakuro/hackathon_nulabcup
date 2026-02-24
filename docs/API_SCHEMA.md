@@ -4,15 +4,15 @@
 
 ### 認証・ユーザー
 
-| Method | Path | 概要 |
-|---|---|---|
-| GET | `/api/v1/users/me` | ログインユーザーのプロフィール・ヌー・レートを返す |
+| Method | Path               | 概要                                               |
+| ------ | ------------------ | -------------------------------------------------- |
+| GET    | `/api/v1/users/me` | ログインユーザーのプロフィール・ヌー・レートを返す |
 
 ## WebSocket エンドポイント
 
-| Path | 概要 |
-|---|---|
-| `ws://{host}/ws/matchmake` | マッチング用WebSocket |
+| Path                            | 概要                    |
+| ------------------------------- | ----------------------- |
+| `ws://{host}/ws/matchmake`      | マッチング用WebSocket   |
 | `ws://{host}/ws/room/{room_id}` | ゲームルーム用WebSocket |
 
 ---
@@ -21,19 +21,19 @@
 
 ### Server → Client
 
-| イベント名 | タイミング | ペイロード概要 |
-|---|---|---|
-| `ev_match_found` | マッチング成立 | Room ID・対戦相手情報 |
-| `ev_turn_start` | ターン開始 | 問題データ・制限時間 |
-| `ev_turn_result` | ターン終了 | 正解・両者の獲得ヌー・Tips |
-| `ev_game_end` | 試合終了 | 最終リザルト |
+| イベント名       | タイミング     | ペイロード概要             |
+| ---------------- | -------------- | -------------------------- |
+| `ev_match_found` | マッチング成立 | Room ID・対戦相手情報      |
+| `ev_turn_start`  | ターン開始     | 問題データ・制限時間       |
+| `ev_turn_result` | ターン終了     | 正解・両者の獲得ヌー・Tips |
+| `ev_game_end`    | 試合終了       | 最終リザルト               |
 
 ### Client → Server
 
-| アクション名 | タイミング | ペイロード概要 |
-|---|---|---|
-| `act_bet_gnu` | ベット | 賭けるヌー数 |
-| `act_submit_answer` | 回答送信 | 選択肢インデックス・回答時間 |
+| アクション名        | タイミング | ペイロード概要               |
+| ------------------- | ---------- | ---------------------------- |
+| `act_bet_gnu`       | ベット     | 賭けるヌー数                 |
+| `act_submit_answer` | 回答送信   | 選択肢インデックス・回答時間 |
 
 ---
 
@@ -81,35 +81,35 @@
 
 ### users テーブル
 
-| カラム名 | 型 | 説明 |
-|---|---|---|
-| id | UUID | PK |
-| github_id | BIGINT | GitHub ユーザーID |
-| github_login | VARCHAR | GitHubユーザー名 |
-| gnu_balance | INT | 保有ヌー（初期値: 1000） |
-| rate | INT | レーティング（初期値: 1500） |
-| encrypted_token | TEXT | 暗号化済みGitHubアクセストークン |
-| created_at | TIMESTAMPTZ | 作成日時 |
-| updated_at | TIMESTAMPTZ | 更新日時 |
+| カラム名        | 型          | 説明                             |
+| --------------- | ----------- | -------------------------------- |
+| id              | UUID        | PK                               |
+| github_id       | BIGINT      | GitHub ユーザーID                |
+| github_login    | VARCHAR     | GitHubユーザー名                 |
+| gnu_balance     | INT         | 保有ヌー（初期値: 1000）         |
+| rate            | INT         | レーティング（初期値: 1500）     |
+| encrypted_token | TEXT        | 暗号化済みGitHubアクセストークン |
+| created_at      | TIMESTAMPTZ | 作成日時                         |
+| updated_at      | TIMESTAMPTZ | 更新日時                         |
 
 ### match_histories テーブル
 
-| カラム名 | 型 | 説明 |
-|---|---|---|
-| id | UUID | PK |
-| room_id | UUID | ゲームルームID |
-| player1_id | UUID | FK → users.id |
-| player2_id | UUID | FK → users.id |
-| winner_id | UUID | FK → users.id（NULL=引き分け） |
-| gnu_diff | INT | ヌーの増減量 |
-| played_at | TIMESTAMPTZ | 対戦日時 |
+| カラム名   | 型          | 説明                           |
+| ---------- | ----------- | ------------------------------ |
+| id         | UUID        | PK                             |
+| room_id    | UUID        | ゲームルームID                 |
+| player1_id | UUID        | FK → users.id                  |
+| player2_id | UUID        | FK → users.id                  |
+| winner_id  | UUID        | FK → users.id（NULL=引き分け） |
+| gnu_diff   | INT         | ヌーの増減量                   |
+| played_at  | TIMESTAMPTZ | 対戦日時                       |
 
 ---
 
 ## Redisキー設計
 
-| キー | 型 | 説明 |
-|---|---|---|
-| `matchmaking:queue` | List | マッチング待機ユーザーのリスト |
-| `room:{room_id}:state` | Hash | ゲームルームの状態（ターン数・スコア等） |
-| `room:{room_id}:questions` | List | 生成済み問題のリスト |
+| キー                       | 型   | 説明                                     |
+| -------------------------- | ---- | ---------------------------------------- |
+| `matchmaking:queue`        | List | マッチング待機ユーザーのリスト           |
+| `room:{room_id}:state`     | Hash | ゲームルームの状態（ターン数・スコア等） |
+| `room:{room_id}:questions` | List | 生成済み問題のリスト                     |

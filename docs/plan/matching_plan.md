@@ -29,11 +29,11 @@
 
 **新規作成:**
 
-| ファイル | 責務 |
-|---|---|
-| `backend/internal/domain/entity/room.go` | Room エンティティ（ID, Player1ID, Player2ID, Status, CreatedAt, UpdatedAt） |
-| `backend/internal/domain/repository/matchmaking_repository.go` | マッチングキュー操作インターフェース（Enqueue, Dequeue, Remove, IsActive） |
-| `backend/internal/domain/repository/room_repository.go` | ルーム操作インターフェース（Create, GetByID） |
+| ファイル                                                       | 責務                                                                        |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `backend/internal/domain/entity/room.go`                       | Room エンティティ（ID, Player1ID, Player2ID, Status, CreatedAt, UpdatedAt） |
+| `backend/internal/domain/repository/matchmaking_repository.go` | マッチングキュー操作インターフェース（Enqueue, Dequeue, Remove, IsActive）  |
+| `backend/internal/domain/repository/room_repository.go`        | ルーム操作インターフェース（Create, GetByID）                               |
 
 **既存参照:** `backend/internal/domain/repository/user_repository.go` のパターンに従う
 
@@ -41,10 +41,10 @@
 
 **新規作成:**
 
-| ファイル | 内容 |
-|---|---|
+| ファイル                                     | 内容                                                                         |
+| -------------------------------------------- | ---------------------------------------------------------------------------- |
 | `backend/db/migrations/002_create_rooms.sql` | rooms テーブル（id, player1_id, player2_id, status, created_at, updated_at） |
-| `backend/db/queries/rooms.sql` | CreateRoom, GetRoomByID, UpdateRoomStatus クエリ |
+| `backend/db/queries/rooms.sql`               | CreateRoom, GetRoomByID, UpdateRoomStatus クエリ                             |
 
 `docs/API_SCHEMA.md` に定義済みの `match_histories` テーブルはゲーム完了時に使うため、この Issue では rooms テーブルのみ作成。
 
@@ -54,39 +54,40 @@
 
 **新規作成:**
 
-| ファイル | 責務 |
-|---|---|
+| ファイル                                                                | 責務                                                      |
+| ----------------------------------------------------------------------- | --------------------------------------------------------- |
 | `backend/internal/infrastructure/persistence/matchmaking_repository.go` | Redis でキュー操作（RPUSH, LPOP, LREM, SETNX で重複防止） |
-| `backend/internal/infrastructure/persistence/room_repository.go` | Redis（HSET/HGETALL）+ PostgreSQL（sqlc）でルーム管理 |
+| `backend/internal/infrastructure/persistence/room_repository.go`        | Redis（HSET/HGETALL）+ PostgreSQL（sqlc）でルーム管理     |
 
 **Redis キー設計（`docs/API_SCHEMA.md` 準拠）:**
 
-| キー | 型 | 用途 |
-|---|---|---|
-| `matchmaking:queue` | List | 待機ユーザーID のFIFOキュー |
-| `matchmaking:active:{user_id}` | String | 重複登録防止フラグ（TTL 300秒） |
-| `room:{room_id}:state` | Hash | player1_id, player2_id, status, created_at |
+| キー                           | 型     | 用途                                       |
+| ------------------------------ | ------ | ------------------------------------------ |
+| `matchmaking:queue`            | List   | 待機ユーザーID のFIFOキュー                |
+| `matchmaking:active:{user_id}` | String | 重複登録防止フラグ（TTL 300秒）            |
+| `room:{room_id}:state`         | Hash   | player1_id, player2_id, status, created_at |
 
 ### Phase 4: バックエンド — ユースケース・Hub・ハンドラ
 
 **新規作成:**
 
-| ファイル | 責務 |
-|---|---|
+| ファイル                                          | 責務                                                            |
+| ------------------------------------------------- | --------------------------------------------------------------- |
 | `backend/internal/usecase/matchmaking_usecase.go` | Enqueue（重複チェック付き）, Dequeue, Cancel のビジネスロジック |
-| `backend/internal/handler/matchmaking_hub.go` | 接続マップ管理（sync.RWMutex）+ マッチングループ goroutine |
+| `backend/internal/handler/matchmaking_hub.go`     | 接続マップ管理（sync.RWMutex）+ マッチングループ goroutine      |
 
 **変更:**
 
-| ファイル | 変更内容 |
-|---|---|
+| ファイル                                           | 変更内容                                                                                            |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `backend/internal/handler/ws_matchmake_handler.go` | エコーバック削除 → Hub への登録、ev_match_found/ev_queue_joined/ev_error 送信、キャンセル・切断処理 |
-| `backend/internal/handler/router.go` | NewRouter の引数に Hub を追加（必要なら） |
-| `backend/cmd/server/main.go` | Redis クライアントを各リポジトリに注入、Hub 生成・goroutine 起動、MatchmakeHandler に依存注入 |
+| `backend/internal/handler/router.go`               | NewRouter の引数に Hub を追加（必要なら）                                                           |
+| `backend/cmd/server/main.go`                       | Redis クライアントを各リポジトリに注入、Hub 生成・goroutine 起動、MatchmakeHandler に依存注入       |
 
 **WebSocket メッセージプロトコル（`docs/API_SCHEMA.md` 準拠）:**
 
 Server → Client:
+
 ```json
 {"type": "ev_queue_joined", "payload": {"message": "マッチング待機中..."}}
 {"type": "ev_match_found", "payload": {"room_id": "uuid", "opponent": {"id": "uuid", "github_login": "name", "rate": 1500}}}
@@ -94,11 +95,13 @@ Server → Client:
 ```
 
 Client → Server:
+
 ```json
-{"type": "act_cancel_matchmaking"}
+{ "type": "act_cancel_matchmaking" }
 ```
 
 **Hub のマッチングループ:**
+
 1. `matchmaking:queue` の LLEN を確認
 2. 2人以上なら LPOP×2（2回目が nil なら1人目を RPUSH で戻す）
 3. Room UUID 生成 → Redis に state 保存 → PostgreSQL に INSERT
@@ -110,37 +113,37 @@ Client → Server:
 
 **新規作成:**
 
-| ファイル | 責務 |
-|---|---|
-| `frontend/src/lib/ws.ts` | WebSocket URL 生成（`NEXT_PUBLIC_WS_URL` 環境変数ベース） |
+| ファイル                             | 責務                                                            |
+| ------------------------------------ | --------------------------------------------------------------- |
+| `frontend/src/lib/ws.ts`             | WebSocket URL 生成（`NEXT_PUBLIC_WS_URL` 環境変数ベース）       |
 | `frontend/src/hooks/useWebSocket.ts` | WebSocket カスタムフック（接続/切断/メッセージ送受信/状態管理） |
 
 ### Phase 6: フロントエンド — ロビーページ
 
 **新規作成:**
 
-| ファイル | 責務 |
-|---|---|
-| `frontend/src/app/lobby/page.tsx` | ロビーページ（Server Component）。認証チェック → 未認証なら `/` にリダイレクト |
+| ファイル                                      | 責務                                                                                                                                         |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/src/app/lobby/page.tsx`             | ロビーページ（Server Component）。認証チェック → 未認証なら `/` にリダイレクト                                                               |
 | `frontend/src/app/lobby/MatchmakingPanel.tsx` | マッチング操作（Client Component）。「対戦を探す」ボタン → WS接続 → 待機アニメーション → `ev_match_found` で `/room/{roomId}` に router.push |
 
 ### Phase 7: フロントエンド — ルームページ
 
 **新規作成:**
 
-| ファイル | 責務 |
-|---|---|
-| `frontend/src/app/room/[roomId]/page.tsx` | ルームページ（Server Component）。roomId をパスパラメータから取得 |
+| ファイル                                      | 責務                                                                                            |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `frontend/src/app/room/[roomId]/page.tsx`     | ルームページ（Server Component）。roomId をパスパラメータから取得                               |
 | `frontend/src/app/room/[roomId]/GameRoom.tsx` | ルーム Client Component。`/ws/room/{roomId}` に接続し、接続確認のみ（ゲームロジックは別 Issue） |
 
 ### Phase 8: フロントエンド — 既存ページ修正
 
 **変更:**
 
-| ファイル | 変更内容 |
-|---|---|
+| ファイル                                  | 変更内容                                                            |
+| ----------------------------------------- | ------------------------------------------------------------------- |
 | `frontend/src/components/AuthButtons.tsx` | ログイン済み時に「ロビーへ」ボタンを追加（Link で `/lobby` へ遷移） |
-| `frontend/src/app/page.tsx` | 変更なし（AuthButtons 経由で遷移） |
+| `frontend/src/app/page.tsx`               | 変更なし（AuthButtons 経由で遷移）                                  |
 
 ---
 

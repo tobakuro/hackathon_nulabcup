@@ -29,15 +29,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user, profile }) {
+    jwt({ token, user, profile, account }) {
       if (user) {
         token.github_id = (user as Record<string, unknown>).github_id;
         token.github_login = (user as Record<string, unknown>).github_login;
       }
-      // profile から直接取得（初回ログイン時）
       if (profile) {
         token.github_login = token.github_login ?? (profile as Record<string, unknown>).login;
         token.github_id = token.github_id ?? (profile as Record<string, unknown>).id;
+      }
+      if (account) {
+        token.accessToken = account.access_token;
       }
       return token;
     },
@@ -46,6 +48,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.sub ?? "";
         (session.user as unknown as Record<string, unknown>).github_id = token.github_id;
         (session.user as unknown as Record<string, unknown>).github_login = token.github_login;
+      }
+      if (token.accessToken) {
+        session.accessToken = token.accessToken as string;
       }
       return session;
     },

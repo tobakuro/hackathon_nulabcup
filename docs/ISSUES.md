@@ -5,7 +5,8 @@
 ---
 
 ## Epic 0: 事前準備
-- [x] **[0-1] **Nix(Devbox)による開発環境のセットアップ**（Go, Next.js, PostgreSQL, Redis）
+
+- [x] **[0-1] **Nix(Devbox)による開発環境のセットアップ\*\*（Go, Next.js, PostgreSQL, Redis）
 
 ## Epic 1: インフラ・基盤セットアップ
 
@@ -16,7 +17,7 @@
 ---
 
 ## Epic 2: 認証・ユーザー管理
-  
+
 - [x] **[2-1] GitHub OAuth ログインの実装** (NextAuth.js)
 - [ ] **[2-2] `GET /api/v1/users/me` の実装** (Go)
 - [ ] **[2-3] GitHubアクセストークンの暗号化保存**
