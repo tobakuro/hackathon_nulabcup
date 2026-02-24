@@ -55,3 +55,49 @@ export interface QuizQuestion {
 export interface QuizBatch {
   quizzes: QuizQuestion[];
 }
+
+("use server"); // サーバー側で実行することを宣言
+
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// ステップ1で作成した定数と型定義がここにある前提です
+
+export async function generateQuizBatchAction(
+  combinedCode: string,
+): Promise<QuizBatch | null> {
+  // 1. 環境変数からAPIキーを取得
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.error("GEMINI_API_KEY が設定されていません。");
+    return null;
+  }
+
+  // 2. Geminiの初期化
+  const genAI = new GoogleGenerativeAI(apiKey);
+  // モデルには高速で安価（無料枠が広い）な gemini-2.0-flash を指定します
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  try {
+    // 3. プロンプトの組み立て
+    // システム命令と、引数で受け取ったソースコードを合体させます
+    const finalPrompt = `${SYSTEM_PROMPT}\n\n# 解析対象ソースコード\n${combinedCode}`;
+
+    // 4. Gemini APIを呼び出し（JSON形式で返却するよう設定）
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: finalPrompt }] }],
+      generationConfig: {
+        responseMimeType: "application/json", // これにより確実にJSONが返ります
+      },
+    });
+
+    const responseText = result.response.text();
+    if (!responseText) return null;
+
+    // 5. JSONをパースして型を整えて返す
+    const quizData = JSON.parse(responseText) as QuizBatch;
+    return quizData;
+  } catch (error) {
+    console.error("クイズ生成中にエラーが発生しました:", error);
+    return null;
+  }
+}
