@@ -1,5 +1,9 @@
 "use server";
 
+import { db } from "../../db/index";
+import { repositories, repositoryFiles } from "../../db/schema";
+import { eq } from "drizzle-orm";
+
 import { GoogleGenAI } from "@google/genai";
 
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 10000) {
@@ -189,23 +193,34 @@ export async function getRepoDependencies(
             cache: "no-store",
           },
         );
-        if (!res.ok) return "";
+        if (!res.ok) return { path, content: "" };
         const data = await res.json();
-        if (!data.content) return "";
+        if (!data.content) return { path, content: "" };
 
         const decoded = Buffer.from(data.content, "base64").toString("utf-8");
-        return `\n\n=== ${path} ===\n${decoded}`;
+        return { path, content: decoded };
       } catch {
-        return "";
+        return { path, content: "" };
       }
     };
 
-    const contents = await Promise.allSettled(
-      targetFiles.map((file: { path: string }) => fetchContent(file.path)),
-    );
+    const contents: PromiseSettledResult<{ path: string; content: string }>[] = [];
+    const concurrencyLimit = 5;
+    for (let i = 0; i < targetFiles.length; i += concurrencyLimit) {
+      const batch = targetFiles.slice(i, i + concurrencyLimit);
+      const batchResults = await Promise.allSettled(
+        batch.map((file: { path: string }) => fetchContent(file.path)),
+      );
+      contents.push(...batchResults);
+    }
     let combinedText = "";
+    const validFilesToSave: Array<{ path: string; content: string }> = [];
+
     for (const result of contents) {
-      if (result.status === "fulfilled") combinedText += result.value;
+      if (result.status === "fulfilled" && result.value.content) {
+        combinedText += `\n\n=== ${result.value.path} ===\n${result.value.content}`;
+        validFilesToSave.push(result.value);
+      }
     }
 
     if (combinedText.trim() === "") return null;
@@ -274,6 +289,48 @@ export async function getRepoDependencies(
     if (!reportText) return null;
     const report = JSON.parse(reportText) as AIAnalysisReport;
     report.analyzedFiles = targetFiles.map((file: { path: string }) => file.path);
+
+    // 5. 生ソースコードをDBに保存
+    try {
+      const fullName = `${owner}/${repo}`;
+      const [upsertedRepo] = await db
+        .insert(repositories)
+        .values({
+          owner,
+          name: repo,
+          fullName,
+          summaryJson: report,
+        })
+        .onConflictDoUpdate({
+          target: repositories.fullName,
+          set: {
+            summaryJson: report,
+            updatedAt: new Date(),
+          },
+        })
+        .returning({ id: repositories.id });
+
+      const repoId = upsertedRepo.id;
+
+      // 既存のファイルを一度削除して洗い替え、その後インサートをトランザクションで実行
+      await db.transaction(async (tx) => {
+        await tx.delete(repositoryFiles).where(eq(repositoryFiles.repositoryId, repoId));
+
+        const filesToInsert = validFilesToSave.map((file) => ({
+          repositoryId: repoId,
+          filePath: file.path,
+          content: file.content,
+        }));
+
+        if (filesToInsert.length > 0) {
+          // 大量ファイル対応のためチャンク分割なども考えられるが20〜30件なので一括で送信
+          await tx.insert(repositoryFiles).values(filesToInsert);
+        }
+      });
+    } catch (dbError) {
+      console.error("Failed to save raw files to DB:", dbError);
+      // DB保存に失敗しても表示用データは返すようにする
+    }
 
     return report;
   } catch (e) {
