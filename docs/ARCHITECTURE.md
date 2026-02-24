@@ -2,15 +2,15 @@
 
 ## 技術スタック
 
-| レイヤー | 技術 |
-|---|---|
-| フロントエンド | Next.js |
-| バックエンド | Go (Goroutine / Channel) |
-| リアルタイム通信 | WebSocket (`gorilla/websocket`) |
-| DB | PostgreSQL |
-| インメモリDB | Redis (マッチングキュー・ルーム状態管理) |
-| 認証 | GitHub OAuth (NextAuth.js) |
-| LLM | Gemini API (Next.js API Routes経由) |
+| レイヤー         | 技術                                     |
+| ---------------- | ---------------------------------------- |
+| フロントエンド   | Next.js                                  |
+| バックエンド     | Go (Goroutine / Channel)                 |
+| リアルタイム通信 | WebSocket (`gorilla/websocket`)          |
+| DB               | PostgreSQL                               |
+| インメモリDB     | Redis (マッチングキュー・ルーム状態管理) |
+| 認証             | GitHub OAuth (NextAuth.js)               |
+| LLM              | Gemini API (Next.js API Routes経由)      |
 
 ## システム構成図
 
@@ -67,10 +67,10 @@
 
 ### キャッシュ実装の段階的移行
 
-| フェーズ | 保存先 | 概要 |
-|---|---|---|
-| フェーズ1（初期実装） | sessionStorage | 実装コストが低い。タブを閉じると消えるがゲームセッション中は保持される |
-| フェーズ2（UX改善） | PostgreSQL | ログイン時にDBからサマリーを取得し即ゲーム開始可能。`summary_updated_at` で鮮度管理 |
+| フェーズ              | 保存先         | 概要                                                                                |
+| --------------------- | -------------- | ----------------------------------------------------------------------------------- |
+| フェーズ1（初期実装） | sessionStorage | 実装コストが低い。タブを閉じると消えるがゲームセッション中は保持される              |
+| フェーズ2（UX改善）   | PostgreSQL     | ログイン時にDBからサマリーを取得し即ゲーム開始可能。`summary_updated_at` で鮮度管理 |
 
 ### フェーズ2のDBスキーマ（予定）
 

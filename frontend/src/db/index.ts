@@ -2,9 +2,19 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "./schema";
 
+const getUserDbUrl = () => {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  const user = process.env.USER;
+  if (!user) throw new Error("USER environment variable is missing");
+  let url = `postgres://${user}@localhost:5432/hackathon`;
+  if (process.env.PGHOST) {
+    url += `?host=${process.env.PGHOST}`;
+  }
+  return url;
+};
+
 const pool = new Pool({
-    // Use DEVBOX's configured PG connection or a fallback
-    connectionString: process.env.DATABASE_URL || `postgres://${process.env.USER}@localhost:5432/hackathon?host=${process.env.PGHOST}`,
+  connectionString: getUserDbUrl(),
 });
 
 export const db = drizzle(pool, { schema });

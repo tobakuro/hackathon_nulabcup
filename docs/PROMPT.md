@@ -10,7 +10,7 @@
 
 ## ユーザープロンプト（テンプレート）
 
-```
+````
 以下のコードスニペットと要件に基づいて、プログラミングクイズを生成してください。
 
 【要件】
@@ -25,8 +25,9 @@
 言語: {language}
 ```{language}
 {code_snippet}
-```
-```
+````
+
+````
 
 ## 期待するJSONスキーマ
 
@@ -59,7 +60,7 @@ LLM API の Structured Outputs 機能でこのスキーマを強制する。
   },
   "required": ["difficulty", "question_text", "choices", "correct_answer", "tips"]
 }
-```
+````
 
 ## Go側の対応構造体
 

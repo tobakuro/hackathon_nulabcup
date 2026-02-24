@@ -56,42 +56,44 @@ cd backend && go mod download && cd ..
 ターミナルを2つ開き、それぞれ `devbox shell` に入った状態で:
 
 **バックエンド（Go + air によるホットリロード）:**
+
 ```bash
 devbox run backend:dev
 ```
 
 **フロントエンド（Next.js）:**
+
 ```bash
 devbox run frontend:dev
 ```
 
-| サービス | URL |
-|---|---|
-| フロントエンド | http://localhost:3000 |
+| サービス         | URL                   |
+| ---------------- | --------------------- |
+| フロントエンド   | http://localhost:3000 |
 | バックエンド API | http://localhost:8080 |
 
 ## 利用可能なスクリプト
 
-| コマンド | 説明 |
-|---|---|
-| `devbox run db:setup` | DB作成 + マイグレーション（手動実行用、通常は不要） |
-| `devbox run backend:dev` | バックエンド開発サーバー（ホットリロード） |
-| `devbox run backend:run` | バックエンド実行（ホットリロードなし） |
-| `devbox run backend:build` | バックエンドビルド |
-| `devbox run frontend:dev` | フロントエンド開発サーバー |
-| `devbox run frontend:install` | フロントエンド依存関係インストール |
-| `devbox run sqlc:generate` | SQLCコード生成 |
+| コマンド                      | 説明                                                |
+| ----------------------------- | --------------------------------------------------- |
+| `devbox run db:setup`         | DB作成 + マイグレーション（手動実行用、通常は不要） |
+| `devbox run backend:dev`      | バックエンド開発サーバー（ホットリロード）          |
+| `devbox run backend:run`      | バックエンド実行（ホットリロードなし）              |
+| `devbox run backend:build`    | バックエンドビルド                                  |
+| `devbox run frontend:dev`     | フロントエンド開発サーバー                          |
+| `devbox run frontend:install` | フロントエンド依存関係インストール                  |
+| `devbox run sqlc:generate`    | SQLCコード生成                                      |
 
 ## DB接続情報
 
 devbox 環境では PostgreSQL に **UNIXソケット** で接続します。TCP接続（`localhost:5432`）ではありません。
 
-| 項目 | 値 |
-|---|---|
-| ホスト | `$PGHOST`（UNIXソケットディレクトリ） |
-| データベース名 | `hackathon` |
-| ユーザー | OSのユーザー名（自動検出） |
-| パスワード | なし（trust認証） |
+| 項目           | 値                                    |
+| -------------- | ------------------------------------- |
+| ホスト         | `$PGHOST`（UNIXソケットディレクトリ） |
+| データベース名 | `hackathon`                           |
+| ユーザー       | OSのユーザー名（自動検出）            |
+| パスワード     | なし（trust認証）                     |
 
 バックエンドは `.env` がなくても devbox 環境変数（`$PGHOST`）を自動検出して接続します。
 

@@ -27,27 +27,13 @@
         "if ! psql -h \"$PGHOST\" -lqt 2>/dev/null | cut -d '|' -f 1 | grep -qw hackathon; then createdb -h \"$PGHOST\" hackathon && echo 'Created database: hackathon'; else echo 'Database hackathon already exists'; fi",
         "GOOSE_DRIVER=postgres GOOSE_DBSTRING=\"host=${PGHOST} user=${USER} dbname=hackathon sslmode=disable\" GOOSE_MIGRATION_DIR=${DEVBOX_PROJECT_ROOT}/backend/db/migrations goose up && echo 'All migrations applied.'"
       ],
-      "backend:dev": [
-        "cd backend && air"
-      ],
-      "backend:run": [
-        "cd backend && go run ./cmd/server"
-      ],
-      "backend:build": [
-        "cd backend && go build -o bin/server ./cmd/server"
-      ],
-      "frontend:dev": [
-        "cd frontend && npm run dev"
-      ],
-      "frontend:install": [
-        "cd frontend && npm install"
-      ],
-      "sqlc:generate": [
-        "cd backend/db && sqlc generate"
-      ],
-      "backend:lint": [
-        "cd backend && golangci-lint run ./..."
-      ]
+      "backend:dev": ["cd backend && air"],
+      "backend:run": ["cd backend && go run ./cmd/server"],
+      "backend:build": ["cd backend && go build -o bin/server ./cmd/server"],
+      "frontend:dev": ["cd frontend && npm run dev"],
+      "frontend:install": ["cd frontend && npm install"],
+      "sqlc:generate": ["cd backend/db && sqlc generate"],
+      "backend:lint": ["cd backend && golangci-lint run ./..."]
     }
   }
 }
