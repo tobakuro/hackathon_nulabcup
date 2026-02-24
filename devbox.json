@@ -10,6 +10,10 @@
     "sqlc@latest",
     "goose@latest"
   ],
+  "env":{
+    "PGDATA": "$HOME/.local/share/hackathon_nulabcup/postgresql/data",
+    "PGHOST": "/tmp"
+  },
   "shell": {
     "init_hook": [
       "if [ ! -d \"$PGDATA\" ] || [ -z \"$(ls -A \"$PGDATA\" 2>/dev/null)\" ]; then echo 'Initializing PostgreSQL...'; initdb -D \"$PGDATA\" --no-locale --encoding=UTF8; grep -qF \"listen_addresses = ''\" \"$PGDATA/postgresql.auto.conf\" 2>/dev/null || echo \"listen_addresses = ''\" >> \"$PGDATA/postgresql.auto.conf\"; fi",
@@ -32,6 +36,7 @@
       "backend:build": ["cd backend && go build -o bin/server ./cmd/server"],
       "frontend:dev": ["cd frontend && npm run dev"],
       "frontend:install": ["cd frontend && npm install"],
+      "frontend:drizzle": ["cd frontend && npx drizzle-kit studio"],
       "sqlc:generate": ["cd backend/db && sqlc generate"],
       "backend:lint": ["cd backend && golangci-lint run ./..."]
     }
