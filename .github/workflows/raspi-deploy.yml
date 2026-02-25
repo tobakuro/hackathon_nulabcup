@@ -5,38 +5,10 @@ on:
     branches: [main]
 
 jobs:
-  # 変更されたパスを検出して、必要なデプロイジョブだけを実行する
-  filter:
-    runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            backend:
-              - 'backend/**'
-              - 'raspi/backend.service'
-              - 'devbox.json'
-              - 'devbox.lock'
-            frontend:
-              - 'frontend/**'
-              - 'raspi/frontend.service'
-              - 'devbox.json'
-              - 'devbox.lock'
-
-  deploy-backend:
-    needs: filter
-    # if: needs.filter.outputs.backend == 'true'
+  deploy:
     runs-on: [self-hosted, Linux, ARM64, raspi]
     steps:
       - uses: actions/checkout@v4
-
-      - name: devbox を PATH に追加
-        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: backend/.env を生成
         env:
@@ -67,46 +39,13 @@ jobs:
             echo "DB_PASSWORD=${DB_PASSWORD}"
             echo "DB_NAME=${DB_NAME:-hackathon}"
             echo "DB_SSLMODE=${DB_SSLMODE:-disable}"
-            echo "REDIS_ADDR=${REDIS_ADDR:-localhost:6379}"
+            echo "REDIS_ADDR=${REDIS_ADDR:-redis:6379}"
             echo "REDIS_PASSWORD=${REDIS_PASSWORD}"
             echo "REDIS_DB=${REDIS_DB:-0}"
           } > backend/.env
           chmod 600 backend/.env
 
-      - name: バックエンドをビルド
-        # raspi はメモリが少ないため GOMAXPROCS=1 でビルド時の並列度を制限
-        run: devbox run -- sh -c "cd backend && GOMAXPROCS=1 go build -o /opt/backend/server ./cmd/server"
-
-      - name: serviceファイルを更新
-        run: |
-          cp raspi/backend.service "$HOME/.config/systemd/user/backend.service"
-
-      - name: backend.service を再起動
-        run: |
-          export XDG_RUNTIME_DIR=/run/user/$(id -u)
-          systemctl --user daemon-reload
-          systemctl --user stop backend.service || true
-          systemctl --user start backend.service || {
-            echo "=== start 失敗: journalctl ===" >&2
-            journalctl --user -u backend.service --no-pager -n 50 >&2
-            echo "=== systemctl status ===" >&2
-            systemctl --user status backend.service --no-pager >&2
-            exit 1
-          }
-
-  deploy-frontend:
-    needs: [filter, deploy-backend]
-    # if: needs.filter.outputs.frontend == 'true'
-    runs-on: [self-hosted, Linux, ARM64, raspi]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: devbox を PATH に追加
-        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
       - name: frontend/.env を生成
-        # GITHUB_ID は GitHub Actions の予約変数と衝突するため、Secret 名に FRONTEND_ プレフィックスを付ける
-        # .env ファイルには元の変数名（GITHUB_ID）で書き込む
         env:
           FRONTEND_GITHUB_ID: ${{ secrets.FRONTEND_GITHUB_ID }}
           FRONTEND_GITHUB_SECRET: ${{ secrets.FRONTEND_GITHUB_SECRET }}
@@ -125,28 +64,32 @@ jobs:
           } > frontend/.env
           chmod 600 frontend/.env
 
-      - name: 依存関係をインストール
-        run: devbox run -- sh -c "cd frontend && npm ci --prefer-offline"
-
-      - name: Next.js をビルド
-        # raspi はメモリが少ないため --max-old-space-size で制限
-        run: devbox run -- sh -c "cd frontend && NODE_OPTIONS='--max-old-space-size=512' npm run build"
-
-      - name: serviceファイルを更新
+      - name: raspi/.env を生成（DB_PASSWORD）
+        env:
+          DB_PASSWORD: ${{ secrets.BACKEND_DB_PASSWORD }}
         run: |
-          cp raspi/frontend.service "$HOME/.config/systemd/user/frontend.service"
+          echo "DB_PASSWORD=${DB_PASSWORD}" > raspi/.env
+          chmod 600 raspi/.env
 
-      - name: frontend.service を再起動
+      - name: Docker イメージをビルド
+        run: docker compose -f raspi/compose.yml build
+
+      - name: コンテナを起動
+        run: docker compose -f raspi/compose.yml up -d
+
+      - name: 未使用イメージを削除
+        run: docker image prune -f
+
+      - name: コンテナ状態を確認
         run: |
-          export XDG_RUNTIME_DIR=/run/user/$(id -u)
-          # ビルド後のメモリ解放を待つ
           sleep 5
-          systemctl --user daemon-reload
-          systemctl --user stop frontend.service || true
-          systemctl --user start frontend.service || {
-            echo "=== start 失敗: journalctl ===" >&2
-            journalctl --user -u frontend.service --no-pager -n 50 >&2
-            echo "=== systemctl status ===" >&2
-            systemctl --user status frontend.service --no-pager >&2
+          docker compose -f raspi/compose.yml ps
+          # 全コンテナが running であることを確認
+          not_running=$(docker compose -f raspi/compose.yml ps --format json | jq -r 'select(.State != "running") | .Name')
+          if [ -n "${not_running}" ]; then
+            echo "以下のコンテナが running ではありません:" >&2
+            echo "${not_running}" >&2
+            docker compose -f raspi/compose.yml logs --tail=50 >&2
             exit 1
-          }
+          fi
+          echo "全コンテナが正常に稼働しています"
