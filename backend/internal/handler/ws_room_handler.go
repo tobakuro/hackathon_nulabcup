@@ -2,26 +2,21 @@ package handler
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
-	"github.com/tobakuro/hackathon_nulabcup/backend/internal/domain/entity"
-	"github.com/tobakuro/hackathon_nulabcup/backend/internal/domain/repository"
 )
 
 // RoomHandler はゲームルーム用 WebSocket エンドポイントのハンドラ
 type RoomHandler struct {
-	manager  *RoomManager
-	userRepo repository.UserRepository
+	manager *RoomManager
 }
 
-func NewRoomHandler(manager *RoomManager, userRepo repository.UserRepository) *RoomHandler {
-	return &RoomHandler{manager: manager, userRepo: userRepo}
+func NewRoomHandler(manager *RoomManager) *RoomHandler {
+	return &RoomHandler{manager: manager}
 }
 
 // HandleRoom は ws://{host}/ws/room/:room_id を処理する
@@ -40,27 +35,13 @@ func (h *RoomHandler) HandleRoom(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	user, err := h.userRepo.GetByGitHubLogin(ctx, githubLogin)
+	user, err := h.manager.GetOrCreateUser(ctx, githubLogin, c.QueryParam("github_id"))
 	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			log.Printf("room %s: failed to get user %s: %v", roomID, githubLogin, err)
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user")
-		}
-		// ユーザー未登録の場合は自動作成
-		githubIDStr := c.QueryParam("github_id")
-		githubID, parseErr := strconv.ParseInt(githubIDStr, 10, 64)
-		if parseErr != nil {
+		log.Printf("room %s: failed to get or create user %s: %v", roomID, githubLogin, err)
+		if errors.Is(err, ErrInvalidGitHubID) {
 			return echo.NewHTTPError(http.StatusBadRequest, "invalid github_id")
 		}
-		user = &entity.User{
-			GitHubID:    githubID,
-			GitHubLogin: githubLogin,
-		}
-		if createErr := h.userRepo.Create(ctx, user); createErr != nil {
-			log.Printf("room %s: failed to create user %s: %v", roomID, githubLogin, createErr)
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to create user")
-		}
-		log.Printf("room %s: auto-created user %s (id=%s)", roomID, githubLogin, user.ID)
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get or create user")
 	}
 
 	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
