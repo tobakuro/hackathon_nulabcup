@@ -19,7 +19,7 @@ Epic 5（バトルシステム・ゲームループ）を中心に、実装済�
 
 ## 1. アーキテクチャ概要
 
-```
+```text
 フロントエンド (Next.js)
        │
        │ WebSocket / HTTP
@@ -59,6 +59,7 @@ Epic 5（バトルシステム・ゲームループ）を中心に、実装済�
 | GET | `/ws/matchmake` | WebSocket | `MatchmakeHandler.HandleMatchmake` |
 | GET | `/ws/room/:room_id` | WebSocket | `RoomHandler.HandleRoom` |
 | POST | `/api/dev/enqueue-test-user` | REST (開発環境のみ) | `DevHandler.EnqueueTestUser` |
+| POST | `/api/dev/start-bot-match` | REST (開発環境のみ) | `DevHandler.StartBotMatch` |
 
 WebSocket アップグレードは `gorilla/websocket` の `upgrader` で共通化されており、Origin チェックあり（後述）。
 
@@ -68,7 +69,7 @@ WebSocket アップグレードは `gorilla/websocket` の `upgrader` で共通�
 
 ### 3-1. 接続からキュー参加まで
 
-```
+```text
 クライアント                      サーバー
     │                               │
     │ GET /ws/matchmake             │
@@ -107,7 +108,7 @@ WebSocket アップグレードは `gorilla/websocket` の `upgrader` で共通�
 
 ### 全体シーケンス
 
-```
+```text
 P0                          サーバー                         P1
  │                             │                              │
  │ GET /ws/room/:id?...        │   GET /ws/room/:id?...       │
@@ -154,7 +155,7 @@ P0                          サーバー                         P1
 
 ### 4-2. GameRoom の goroutine 構成
 
-```
+```text
 HandleRoom (goroutine per player)
     ├─ room.run()            ← ゲームループ (idx==0 が起動)
     └─ startReaderLoop(idx)  ← WS 読み取り専用
@@ -182,7 +183,7 @@ HandleRoom (goroutine per player)
 
 ### 4-4. ターンループ（4回繰り返し）
 
-```
+```text
 1. ev_turn_start 送信（各プレイヤーに自分の問題と gnu_balance を通知）
 2. 15秒タイマー開始
 3. メッセージ受付ループ:
@@ -195,7 +196,7 @@ HandleRoom (goroutine per player)
 
 ### 4-5. ポイント計算ロジック
 
-```
+```text
 正解時: earned = baseGnuPerCorrect(100) + bet
 不正解時: loss = bet  (gnu_balance が 0 未満になる場合は 0 に切り捨て)
 ```

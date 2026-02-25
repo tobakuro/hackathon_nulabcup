@@ -16,6 +16,10 @@ export default async function RoomPage({ params }: RoomPageProps) {
   const { roomId } = await params;
   const user = session.user as typeof session.user & { github_login?: string; github_id?: number };
 
+  if (!user.github_login || !user.github_id) {
+    redirect("/auth");
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black overflow-hidden relative">
       {/* Background decorative elements */}
@@ -30,8 +34,8 @@ export default async function RoomPage({ params }: RoomPageProps) {
           user={{
             id: user.id ?? "",
             name: user.name ?? "",
-            github_login: user.github_login ?? "",
-            github_id: user.github_id ?? 0,
+            github_login: user.github_login,
+            github_id: user.github_id,
           }}
         />
       </main>
