@@ -50,6 +50,8 @@ jobs:
             script: lint
           - name: Type check
             script: typecheck
+          - name: Unit test
+            script: test
           - name: Build
             script: build
 
