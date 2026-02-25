@@ -1,0 +1,4 @@
+.env
+.air.toml
+bin/
+*_test.go
