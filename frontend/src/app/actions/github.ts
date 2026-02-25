@@ -121,7 +121,14 @@ export async function getRepoDependencies(
     }
 
     // 2. 「ビジネスロジックの匂いがするファイル」や「設定ファイル」を抽出
-    const configNames = ["package.json", "go.mod", "requirements.txt", "composer.json", "pom.xml", "pubspec.yaml"];
+    const configNames = [
+      "package.json",
+      "go.mod",
+      "requirements.txt",
+      "composer.json",
+      "pom.xml",
+      "pubspec.yaml",
+    ];
     const primaryDirNames = new Set([
       "src",
       "app",
@@ -151,39 +158,39 @@ export async function getRepoDependencies(
 
     const scoredTargets: Array<{ path: string; score: number }> = [];
     for (const item of treeData.tree as Array<{ type: string; path: string }>) {
-        if (item.type !== "blob") continue;
+      if (item.type !== "blob") continue;
 
-        // 無視するディレクトリ配下やテストコード、画像はスキップ
-        const lowerPath = item.path.toLowerCase();
-        if (ignoreDirs.some((dir) => lowerPath.includes(dir))) continue;
-        if (
-          /(^|\/)test(\/|$)/.test(lowerPath) ||
-          /\.test\./.test(lowerPath) ||
-          /\.spec\./.test(lowerPath) ||
-          lowerPath.endsWith(".png") ||
-          lowerPath.endsWith(".svg") ||
-          lowerPath.endsWith(".jpg")
-        ) {
-          continue;
-        }
-        if (lowerPath.endsWith(".lock") || lowerPath.endsWith("-lock.json")) continue;
-
-        const name = lowerPath.split("/").pop() || "";
-        if (name === "readme.md") continue;
-        const segments = lowerPath.split("/");
-        const hasPrimaryDir = segments.some((segment) => primaryDirNames.has(segment));
-        const isCodeFile = codeExts.some((ext) => lowerPath.endsWith(ext));
-        const isRootConfig = configNames.includes(name) && !lowerPath.includes("/");
-
-        if (isCodeFile && hasPrimaryDir) {
-          scoredTargets.push({ path: item.path, score: 2 });
-          continue;
-        }
-        if (isRootConfig) {
-          scoredTargets.push({ path: item.path, score: 1 });
-          continue;
-        }
+      // 無視するディレクトリ配下やテストコード、画像はスキップ
+      const lowerPath = item.path.toLowerCase();
+      if (ignoreDirs.some((dir) => lowerPath.includes(dir))) continue;
+      if (
+        /(^|\/)test(\/|$)/.test(lowerPath) ||
+        /\.test\./.test(lowerPath) ||
+        /\.spec\./.test(lowerPath) ||
+        lowerPath.endsWith(".png") ||
+        lowerPath.endsWith(".svg") ||
+        lowerPath.endsWith(".jpg")
+      ) {
+        continue;
       }
+      if (lowerPath.endsWith(".lock") || lowerPath.endsWith("-lock.json")) continue;
+
+      const name = lowerPath.split("/").pop() || "";
+      if (name === "readme.md") continue;
+      const segments = lowerPath.split("/");
+      const hasPrimaryDir = segments.some((segment) => primaryDirNames.has(segment));
+      const isCodeFile = codeExts.some((ext) => lowerPath.endsWith(ext));
+      const isRootConfig = configNames.includes(name) && !lowerPath.includes("/");
+
+      if (isCodeFile && hasPrimaryDir) {
+        scoredTargets.push({ path: item.path, score: 2 });
+        continue;
+      }
+      if (isRootConfig) {
+        scoredTargets.push({ path: item.path, score: 1 });
+        continue;
+      }
+    }
 
     const targetFiles = scoredTargets
       .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))

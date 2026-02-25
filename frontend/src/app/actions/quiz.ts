@@ -113,9 +113,7 @@ async function fetchAndCombineCodeFromDb(
   let combinedText = "";
 
   if (filesToRead.length > 0) {
-    const contentByPath = new Map(
-      rows.map((row) => [row.filePath, row.content]),
-    );
+    const contentByPath = new Map(rows.map((row) => [row.filePath, row.content]));
     for (const path of filesToRead) {
       const content = contentByPath.get(path);
       if (!content) continue;
@@ -138,11 +136,7 @@ export async function generateQuizBatchAction(
   targetFiles: string[],
 ): Promise<QuizBatch | null> {
   void accessToken;
-  const combinedCode = await fetchAndCombineCodeFromDb(
-    owner,
-    repo,
-    targetFiles,
-  );
+  const combinedCode = await fetchAndCombineCodeFromDb(owner, repo, targetFiles);
   if (!combinedCode) return null;
 
   const apiKey = process.env.GEMINI_API_KEY;
