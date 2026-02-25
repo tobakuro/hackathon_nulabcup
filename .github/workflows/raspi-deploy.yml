@@ -75,10 +75,9 @@ jobs:
         working-directory: raspi
         run: |
           podman system migrate || true
-          podman compose down || true
-          podman ps -q | xargs -r podman stop || true
-          podman ps -aq | xargs -r podman rm -f || true
-          # コンテナ削除後に再度 migrate で pause プロセスをリセット
+          podman compose down --remove-orphans || true
+          # 全コンテナを強制削除（ストレージに残った壊れたコンテナ含む）
+          podman rm -f -a || true
           podman system migrate || true
 
       - name: コンテナイメージをビルド
