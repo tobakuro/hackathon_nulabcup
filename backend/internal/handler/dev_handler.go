@@ -47,6 +47,11 @@ func (h *DevHandler) getOrCreateTestBot(c echo.Context) (*entity.User, error) {
 			GitHubLogin: testLogin,
 		}
 		if createErr := h.userRepo.Create(ctx, user); createErr != nil {
+			// 同時作成競合を吸収: 別リクエストが先に作成済みの場合は再取得して返す
+			existing, getErr := h.userRepo.GetByGitHubLogin(ctx, testLogin)
+			if getErr == nil {
+				return existing, nil
+			}
 			return nil, createErr
 		}
 		log.Printf("dev: created test user %s (id=%s)", testLogin, user.ID)
