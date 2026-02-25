@@ -65,10 +65,13 @@ jobs:
         run: devbox run -- sh -c "cd backend && go build -o /opt/backend/server ./cmd/server"
 
       - name: backend.service を再起動
-        run: systemctl --user restart backend.service
+        run: |
+          export XDG_RUNTIME_DIR=/run/user/$(id -u)
+          systemctl --user restart backend.service
 
       - name: ヘルスチェック
         run: |
+          export XDG_RUNTIME_DIR=/run/user/$(id -u)
           for i in $(seq 1 15); do
             if systemctl --user is-active --quiet backend.service; then
               echo "backend.service is running."
@@ -117,10 +120,13 @@ jobs:
         run: devbox run -- sh -c "cd frontend && NODE_OPTIONS='--max-old-space-size=512' npm run build"
 
       - name: frontend.service を再起動
-        run: systemctl --user restart frontend.service
+        run: |
+          export XDG_RUNTIME_DIR=/run/user/$(id -u)
+          systemctl --user restart frontend.service
 
       - name: ヘルスチェック
         run: |
+          export XDG_RUNTIME_DIR=/run/user/$(id -u)
           for i in $(seq 1 20); do
             if systemctl --user is-active --quiet frontend.service; then
               echo "frontend.service is running."
