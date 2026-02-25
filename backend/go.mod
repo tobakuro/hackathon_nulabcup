@@ -10,6 +10,7 @@ require (
 	github.com/labstack/echo/v4 v4.15.0
 	github.com/lib/pq v1.11.2
 	github.com/redis/go-redis/v9 v9.18.0
+	github.com/sqlc-dev/pqtype v0.3.0
 	github.com/stretchr/testify v1.11.1
 )
 
