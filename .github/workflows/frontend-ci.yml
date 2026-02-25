@@ -62,10 +62,15 @@ jobs:
           enable-cache: true
 
       - name: Restore node_modules
-        uses: actions/cache@v4
+        id: cache-node-modules
+        uses: actions/cache/restore@v4
         with:
           path: frontend/node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
+      - name: Install dependencies (cache miss fallback)
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: devbox run -- sh -c "cd frontend && npm ci"
 
       - name: ${{ matrix.check.name }}
         run: devbox run -- sh -c "cd frontend && npm run ${{ matrix.check.script }}"
