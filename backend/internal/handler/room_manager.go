@@ -70,6 +70,11 @@ func (m *RoomManager) GetOrCreateUser(ctx context.Context, githubLogin string, g
 		GitHubLogin: githubLogin,
 	}
 	if createErr := m.userRepo.Create(ctx, user); createErr != nil {
+		// UNIQUE 制約違反は同時リクエストによる競合。既存レコードを取得して返す
+		existing, getErr := m.userRepo.GetByGitHubLogin(ctx, githubLogin)
+		if getErr == nil {
+			return existing, nil
+		}
 		return nil, fmt.Errorf("failed to create user: %w", createErr)
 	}
 	log.Printf("room manager: auto-created user %s (id=%s)", githubLogin, user.ID)

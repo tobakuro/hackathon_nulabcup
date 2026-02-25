@@ -152,6 +152,13 @@ func (r *GameRoom) startReaderLoop(idx int) {
 		case r.msgCh <- playerMsg{idx: idx, msgType: raw.Type, payload: raw.Payload}:
 		default:
 			log.Printf("game room %s: msgCh full, dropping message from player[%d]", r.id, idx)
+			p.send(WSMessage{
+				Type: "ev_error",
+				Payload: map[string]any{
+					"code":    "server_busy",
+					"message": "サーバーが混雑しています。もう一度送信してください。",
+				},
+			})
 		}
 	}
 }
@@ -208,6 +215,7 @@ func (r *GameRoom) run(ctx context.Context) {
 			r.notifyOpponentDisconnect(idx)
 			return
 		case <-ctx.Done():
+			return
 		case msg := <-r.msgCh:
 			if msg.msgType != "act_submit_questions" {
 				continue
@@ -317,7 +325,7 @@ func (r *GameRoom) run(ctx context.Context) {
 
 			case idx := <-r.disconnCh:
 				log.Printf("game room %s: player[%d] disconnected during turn %d", r.id, idx, turnIdx+1)
-				r.handleTKO(idx, totalGnuEarned)
+				r.handleTKO(idx)
 				return
 
 			case <-ctx.Done():
@@ -393,6 +401,9 @@ func (r *GameRoom) run(ctx context.Context) {
 				loss := bets[i]
 				gnuDeltas[i] = -loss
 				p.gnuBalance -= loss
+				if p.gnuBalance < 0 {
+					p.gnuBalance = 0
+				}
 				totalGnuEarned[i] -= loss
 			}
 		}
@@ -470,7 +481,7 @@ func (r *GameRoom) run(ctx context.Context) {
 }
 
 // handleTKO は切断プレイヤーの TKO 処理を行う
-func (r *GameRoom) handleTKO(disconnIdx int, totalGnuEarned [2]int) {
+func (r *GameRoom) handleTKO(disconnIdx int) {
 	remainingIdx := 1 - disconnIdx
 	winner := r.players[remainingIdx]
 	if winner == nil {
@@ -478,7 +489,6 @@ func (r *GameRoom) handleTKO(disconnIdx int, totalGnuEarned [2]int) {
 	}
 
 	winner.gnuBalance += tkoBonus
-	totalGnuEarned[remainingIdx] += tkoBonus
 
 	winner.send(WSMessage{
 		Type: "ev_tko",
