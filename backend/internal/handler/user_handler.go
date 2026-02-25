@@ -3,7 +3,6 @@ package handler
 import (
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/tobakuro/hackathon_nulabcup/backend/internal/usecase"
 )
@@ -17,19 +16,14 @@ func NewUserHandler(uc *usecase.UserUsecase) *UserHandler {
 }
 
 // GetMe は現在のログインユーザー情報を返す
-// TODO: 認証ミドルウェアからユーザーIDを取得する実装に置き換え
+// クエリパラメータ github_login でユーザーを特定する
 func (h *UserHandler) GetMe(c echo.Context) error {
-	userIDStr := c.Request().Header.Get("X-User-ID")
-	if userIDStr == "" {
+	githubLogin := c.QueryParam("github_login")
+	if githubLogin == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
 
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid user id"})
-	}
-
-	user, err := h.userUsecase.GetMe(c.Request().Context(), userID)
+	user, err := h.userUsecase.GetMeByGitHubLogin(c.Request().Context(), githubLogin)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 	}
