@@ -71,25 +71,29 @@ jobs:
           echo "DB_PASSWORD=${DB_PASSWORD}" > raspi/.env
           chmod 600 raspi/.env
 
-      - name: Docker イメージをビルド
-        run: docker compose -f raspi/compose.yml build
+      - name: コンテナイメージをビルド
+        run: podman compose -f raspi/compose.yml build
 
       - name: コンテナを起動
-        run: docker compose -f raspi/compose.yml up -d
+        run: podman compose -f raspi/compose.yml up -d
 
       - name: 未使用イメージを削除
-        run: docker image prune -f
+        run: podman image prune -f
 
       - name: コンテナ状態を確認
         run: |
           sleep 5
-          docker compose -f raspi/compose.yml ps
+          podman compose -f raspi/compose.yml ps
           # 全コンテナが running であることを確認
-          not_running=$(docker compose -f raspi/compose.yml ps --format json | jq -r 'select(.State != "running") | .Name')
-          if [ -n "${not_running}" ]; then
-            echo "以下のコンテナが running ではありません:" >&2
-            echo "${not_running}" >&2
-            docker compose -f raspi/compose.yml logs --tail=50 >&2
-            exit 1
-          fi
-          echo "全コンテナが正常に稼働しています"
+          podman compose -f raspi/compose.yml ps --format json | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          if not isinstance(data, list):
+              data = [data]
+          failed = [c['Name'] for c in data if c.get('State') != 'running']
+          if failed:
+              print('以下のコンテナが running ではありません:', file=sys.stderr)
+              print('\n'.join(failed), file=sys.stderr)
+              sys.exit(1)
+          print('全コンテナが正常に稼働しています')
+          "
