@@ -4,11 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LoadedRepository } from "@/app/actions/github";
-import {
-  generateQuizBatchAction,
-  type SoloDifficulty,
-  type SoloMode,
-} from "@/app/actions/quiz";
+import { generateQuizBatchAction, type SoloDifficulty, type SoloMode } from "@/app/actions/quiz";
 import { appendQuizHistory, type QuizPayload } from "@/lib/soloQuizHistory";
 
 type Difficulty = "easy" | "normal" | "hard";
@@ -62,21 +58,13 @@ export default function SoloSettings({ loadedRepos, mode }: SoloSettingsProps) {
     setGenerationError(null);
 
     try {
-      const generated = await generateQuizBatchAction(
-        repo.owner,
-        repo.name,
-        "",
-        targetFiles,
-        {
-          mode,
-          difficulty: difficulty as SoloDifficulty,
-          questionCount,
-        },
-      );
+      const generated = await generateQuizBatchAction(repo.owner, repo.name, "", targetFiles, {
+        mode,
+        difficulty: difficulty as SoloDifficulty,
+        questionCount,
+      });
       if (!generated || generated.quizzes.length === 0) {
-        setGenerationError(
-          "クイズ生成に失敗しました。時間をおいて再実行してください。",
-        );
+        setGenerationError("クイズ生成に失敗しました。時間をおいて再実行してください。");
         return;
       }
 
@@ -188,10 +176,7 @@ export default function SoloSettings({ loadedRepos, mode }: SoloSettingsProps) {
         <div className="grid grid-cols-3 gap-2">
           {difficultyOptions.map((opt) => {
             const isSelected = difficulty === opt.value;
-            const colorClasses: Record<
-              string,
-              { active: string; hover: string }
-            > = {
+            const colorClasses: Record<string, { active: string; hover: string }> = {
               emerald: {
                 active:
                   "border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400",
@@ -269,9 +254,7 @@ export default function SoloSettings({ loadedRepos, mode }: SoloSettingsProps) {
           {isGenerating ? "クイズ生成中..." : "🚀 クイズ開始"}
         </button>
         {generationError && (
-          <p className="text-center text-[11px] text-red-500 mt-2">
-            {generationError}
-          </p>
+          <p className="text-center text-[11px] text-red-500 mt-2">{generationError}</p>
         )}
       </div>
     </div>
