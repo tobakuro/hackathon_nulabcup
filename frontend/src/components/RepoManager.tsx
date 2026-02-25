@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { GitHubRepo } from "@/types/github";
 import type { LoadedRepository } from "@/app/actions/github";
-import { getRepoLanguages, getRepoDependencies } from "@/app/actions/github";
+import { getRepoDependencies, getLoadedRepositories } from "@/app/actions/github";
 
 // 言語ごとの色ドット
 function LanguageDot({ language }: { language: string }) {
@@ -64,34 +64,23 @@ export default function RepoManager({
   const handleLoad = async (repo: GitHubRepo) => {
     setLoadingId(repo.id);
     setLoadProgress(0);
-    setLoadStep("言語情報を取得中...");
+    setLoadStep("AI解析・保存中...");
     setError(null);
 
     try {
       const [owner, repoName] = repo.full_name.split("/");
 
-      setLoadProgress(20);
-      await getRepoLanguages(owner, repoName);
-
-      setLoadStep("AI解析・保存中...");
-      setLoadProgress(50);
-      const report = await getRepoDependencies(owner, repoName, repo.default_branch);
-      setLoadProgress(100);
+      setLoadProgress(30);
+      await getRepoDependencies(owner, repoName, repo.default_branch);
+      setLoadProgress(90);
       setLoadStep("完了!");
+
+      // DB正規データを再取得してクライアントステートを同期
+      const freshLoaded = await getLoadedRepositories();
 
       setTimeout(() => {
         setUnloadedRepos((prev) => prev.filter((r) => r.id !== repo.id));
-        setLoadedRepos((prev) => [
-          {
-            id: crypto.randomUUID(),
-            owner,
-            name: repoName,
-            fullName: repo.full_name,
-            summaryJson: report,
-            updatedAt: new Date(),
-          },
-          ...prev,
-        ]);
+        setLoadedRepos(freshLoaded);
         setLoadingId(null);
         setLoadProgress(0);
         setLoadStep("");
@@ -116,21 +105,16 @@ export default function RepoManager({
       const ghRepo = allGitHubRepos.find((r) => r.full_name === loaded.fullName);
       const defaultBranch = ghRepo?.default_branch ?? "main";
 
-      setLoadProgress(20);
-      await getRepoLanguages(loaded.owner, loaded.name);
-
-      setLoadStep("AI解析・保存中...");
-      setLoadProgress(50);
-      const report = await getRepoDependencies(loaded.owner, loaded.name, defaultBranch);
-      setLoadProgress(100);
+      setLoadProgress(30);
+      await getRepoDependencies(loaded.owner, loaded.name, defaultBranch);
+      setLoadProgress(90);
       setLoadStep("完了!");
 
+      // DB正規データを再取得してクライアントステートを同期
+      const freshLoaded = await getLoadedRepositories();
+
       setTimeout(() => {
-        setLoadedRepos((prev) =>
-          prev.map((r) =>
-            r.id === loaded.id ? { ...r, summaryJson: report, updatedAt: new Date() } : r,
-          ),
-        );
+        setLoadedRepos(freshLoaded);
         setLoadingId(null);
         setLoadProgress(0);
         setLoadStep("");

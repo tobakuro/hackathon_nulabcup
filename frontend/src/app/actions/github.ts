@@ -361,7 +361,7 @@ export interface LoadedRepository {
  * Server Action: DBに保存済み（読み取り済み）のリポジトリ一覧を取得する
  */
 export async function getLoadedRepositories(): Promise<LoadedRepository[]> {
-  await auth(); // 認証チェック
+  await getAccessToken(); // 認証チェック（未認証時はエラーをスロー）
 
   try {
     const rows = await db
