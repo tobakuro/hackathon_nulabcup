@@ -59,8 +59,6 @@ jobs:
             echo "必須 Secret が未設定です: ${missing[*]}" >&2
             exit 1
           fi
-          # systemd の EnvironmentFile が参照するパスに直接生成
-          mkdir -p "$HOME/workspace/hackathon_nulabcup/backend"
           {
             echo "SERVER_PORT=${SERVER_PORT:-8080}"
             echo "DB_HOST=${DB_HOST}"
@@ -72,22 +70,20 @@ jobs:
             echo "REDIS_ADDR=${REDIS_ADDR:-localhost:6379}"
             echo "REDIS_PASSWORD=${REDIS_PASSWORD}"
             echo "REDIS_DB=${REDIS_DB:-0}"
-          } > "$HOME/workspace/hackathon_nulabcup/backend/.env"
-          chmod 600 "$HOME/workspace/hackathon_nulabcup/backend/.env"
+          } > backend/.env
+          chmod 600 backend/.env
 
       - name: バックエンドをビルド
         # raspi はメモリが少ないため GOMAXPROCS=1 でビルド時の並列度を制限
         run: devbox run -- sh -c "cd backend && GOMAXPROCS=1 go build -o /opt/backend/server ./cmd/server"
 
+      - name: serviceファイルを更新
+        run: |
+          cp raspi/backend.service "$HOME/.config/systemd/user/backend.service"
+
       - name: backend.service を再起動
         run: |
           export XDG_RUNTIME_DIR=/run/user/$(id -u)
-          echo "=== メモリ状況 (再起動前) ==="
-          free -m
-          echo "=== バイナリ確認 ==="
-          ls -la /opt/backend/server || echo "バイナリが存在しません!"
-          echo "=== service ファイル確認 ==="
-          systemctl --user cat backend.service || echo "service ファイルが見つかりません!"
           systemctl --user daemon-reload
           systemctl --user stop backend.service || true
           systemctl --user start backend.service || {
@@ -118,16 +114,14 @@ jobs:
           FRONTEND_NEXTAUTH_SECRET: ${{ secrets.FRONTEND_NEXTAUTH_SECRET }}
           FRONTEND_GEMINI_API_KEY: ${{ secrets.FRONTEND_GEMINI_API_KEY }}
         run: |
-          # systemd の EnvironmentFile が参照するパスに直接生成
-          mkdir -p "$HOME/workspace/hackathon_nulabcup/frontend"
           {
             echo "GITHUB_ID=${FRONTEND_GITHUB_ID}"
             echo "GITHUB_SECRET=${FRONTEND_GITHUB_SECRET}"
             echo "AUTH_URL=${FRONTEND_AUTH_URL}"
             echo "NEXTAUTH_SECRET=${FRONTEND_NEXTAUTH_SECRET}"
             echo "GEMINI_API_KEY=${FRONTEND_GEMINI_API_KEY}"
-          } > "$HOME/workspace/hackathon_nulabcup/frontend/.env"
-          chmod 600 "$HOME/workspace/hackathon_nulabcup/frontend/.env"
+          } > frontend/.env
+          chmod 600 frontend/.env
 
       - name: 依存関係をインストール
         run: devbox run -- sh -c "cd frontend && npm ci --prefer-offline"
@@ -136,13 +130,13 @@ jobs:
         # raspi はメモリが少ないため --max-old-space-size で制限
         run: devbox run -- sh -c "cd frontend && NODE_OPTIONS='--max-old-space-size=512' npm run build"
 
+      - name: serviceファイルを更新
+        run: |
+          cp raspi/frontend.service "$HOME/.config/systemd/user/frontend.service"
+
       - name: frontend.service を再起動
         run: |
           export XDG_RUNTIME_DIR=/run/user/$(id -u)
-          echo "=== メモリ状況 (再起動前) ==="
-          free -m
-          echo "=== service ファイル確認 ==="
-          systemctl --user cat frontend.service || echo "service ファイルが見つかりません!"
           # ビルド後のメモリ解放を待つ
           sleep 5
           systemctl --user daemon-reload

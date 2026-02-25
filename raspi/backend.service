@@ -4,9 +4,9 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/workspace/hackathon_nulabcup/backend
+WorkingDirectory=%h/actions-runner/_work/hackathon_nulabcup/hackathon_nulabcup/backend
 ExecStart=/opt/backend/server
-EnvironmentFile=%h/workspace/hackathon_nulabcup/backend/.env
+EnvironmentFile=%h/actions-runner/_work/hackathon_nulabcup/hackathon_nulabcup/backend/.env
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
