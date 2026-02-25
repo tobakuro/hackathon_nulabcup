@@ -97,8 +97,7 @@ export async function getRepoDependencies(
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.error("GEMINI_API_KEY is not defined.");
-    return null;
+    throw new Error("GEMINI_API_KEY is not defined.");
   }
 
   const headers = {
@@ -112,20 +111,28 @@ export async function getRepoDependencies(
       `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(defaultBranch)}?recursive=1`,
       { headers, cache: "no-store" },
     );
-    if (!treeRes.ok) return null;
+    if (!treeRes.ok) {
+      throw new Error(`Failed to fetch repository tree: ${treeRes.status} ${treeRes.statusText}`);
+    }
 
     const treeData = await treeRes.json();
-    if (!treeData.tree || !Array.isArray(treeData.tree)) return null;
+    if (!treeData.tree || !Array.isArray(treeData.tree)) {
+      throw new Error("Repository tree response is invalid");
+    }
 
     // 2. 「ビジネスロジックの匂いがするファイル」や「設定ファイル」を抽出
-    const configNames = [
-      "package.json",
-      "go.mod",
-      "requirements.txt",
-      "composer.json",
-      "pom.xml",
-      "pubspec.yaml",
-    ];
+    const configNames = ["package.json", "go.mod", "requirements.txt", "composer.json", "pom.xml", "pubspec.yaml"];
+    const primaryDirNames = new Set([
+      "src",
+      "app",
+      "lib",
+      "components",
+      "pages",
+      "cmd",
+      "internal",
+      "handlers",
+    ]);
+    const codeExts = [".ts", ".tsx", ".js", ".jsx", ".go", ".py", ".php", ".dart", ".cs", ".rb"];
     const ignoreDirs = [
       "node_modules/",
       "vendor/",
@@ -135,15 +142,20 @@ export async function getRepoDependencies(
       "build/",
       "out/",
       ".git/",
+      "docs/",
+      "doc/",
+      "examples/",
+      "example/",
+      "third_party/",
     ];
 
-    const targetFiles = treeData.tree
-      .filter((item: { type: string; path: string }) => {
-        if (item.type !== "blob") return false;
+    const scoredTargets: Array<{ path: string; score: number }> = [];
+    for (const item of treeData.tree as Array<{ type: string; path: string }>) {
+        if (item.type !== "blob") continue;
 
         // 無視するディレクトリ配下やテストコード、画像はスキップ
         const lowerPath = item.path.toLowerCase();
-        if (ignoreDirs.some((dir) => lowerPath.includes(dir))) return false;
+        if (ignoreDirs.some((dir) => lowerPath.includes(dir))) continue;
         if (
           /(^|\/)test(\/|$)/.test(lowerPath) ||
           /\.test\./.test(lowerPath) ||
@@ -151,36 +163,36 @@ export async function getRepoDependencies(
           lowerPath.endsWith(".png") ||
           lowerPath.endsWith(".svg") ||
           lowerPath.endsWith(".jpg")
-        )
-          return false;
-        if (lowerPath.endsWith(".lock") || lowerPath.endsWith("-lock.json")) return false;
+        ) {
+          continue;
+        }
+        if (lowerPath.endsWith(".lock") || lowerPath.endsWith("-lock.json")) continue;
 
         const name = lowerPath.split("/").pop() || "";
+        if (name === "readme.md") continue;
+        const segments = lowerPath.split("/");
+        const hasPrimaryDir = segments.some((segment) => primaryDirNames.has(segment));
+        const isCodeFile = codeExts.some((ext) => lowerPath.endsWith(ext));
+        const isRootConfig = configNames.includes(name) && !lowerPath.includes("/");
 
-        // 設定ファイル、README、または主要実装ディレクトリ内のコードをピックアップ
-        if (name === "readme.md" || configNames.includes(name)) return true;
-        if (
-          lowerPath.includes("src/") ||
-          lowerPath.includes("app/") ||
-          lowerPath.includes("lib/") ||
-          lowerPath.includes("handlers/")
-        ) {
-          return (
-            name.endsWith(".ts") ||
-            name.endsWith(".js") ||
-            name.endsWith(".go") ||
-            name.endsWith(".py") ||
-            name.endsWith(".php") ||
-            name.endsWith(".dart") ||
-            name.endsWith(".cs") ||
-            name.endsWith(".rb")
-          );
+        if (isCodeFile && hasPrimaryDir) {
+          scoredTargets.push({ path: item.path, score: 2 });
+          continue;
         }
-        return false;
-      })
+        if (isRootConfig) {
+          scoredTargets.push({ path: item.path, score: 1 });
+          continue;
+        }
+      }
+
+    const targetFiles = scoredTargets
+      .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
+      .map((item: { path: string; score: number }) => ({ path: item.path }))
       .slice(0, 20); // APIとトークン制限を考慮し、最大20ファイルに制限
 
-    if (targetFiles.length === 0) return null;
+    if (targetFiles.length === 0) {
+      throw new Error("解析対象ファイルが見つかりませんでした");
+    }
 
     // 3. ファイルの中身を並列取得し、1つの巨大なテキストに結合
     const fetchContent = async (path: string) => {
@@ -223,7 +235,9 @@ export async function getRepoDependencies(
       }
     }
 
-    if (combinedText.trim() === "") return null;
+    if (combinedText.trim() === "") {
+      throw new Error("解析対象ファイルの内容取得に失敗しました");
+    }
 
     if (combinedText.length > 100000) {
       combinedText = combinedText.substring(0, 100000) + "\n... (truncated)";
@@ -286,7 +300,9 @@ export async function getRepoDependencies(
     });
 
     const reportText = result.text;
-    if (!reportText) return null;
+    if (!reportText) {
+      throw new Error("AI response is empty");
+    }
     const report = JSON.parse(reportText) as AIAnalysisReport;
     report.analyzedFiles = targetFiles.map((file: { path: string }) => file.path);
 
@@ -335,6 +351,6 @@ export async function getRepoDependencies(
     return report;
   } catch (e) {
     console.error("AI Analysis failed:", e);
-    return null;
+    throw e instanceof Error ? e : new Error("AI Analysis failed");
   }
 }
