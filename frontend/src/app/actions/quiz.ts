@@ -52,23 +52,7 @@ export interface QuizBatch {
   quizzes: QuizQuestion[];
 }
 
-function isQuizCandidatePath(path: string): boolean {
-  const lower = path.toLowerCase();
-  if (lower.endsWith("readme.md")) return false;
-  if (lower.includes("/docs/") || lower.startsWith("docs/")) return false;
-  return (
-    lower.endsWith(".ts") ||
-    lower.endsWith(".tsx") ||
-    lower.endsWith(".js") ||
-    lower.endsWith(".jsx") ||
-    lower.endsWith(".go") ||
-    lower.endsWith(".py") ||
-    lower.endsWith(".php") ||
-    lower.endsWith(".dart") ||
-    lower.endsWith(".cs") ||
-    lower.endsWith(".rb")
-  );
-}
+import { isQuizCandidatePath } from "@/lib/quiz-utils";
 
 // 内部用：ファイル取得関数
 async function fetchAndCombineCodeFromDb(
