@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { QuizQuestion } from "@/app/actions/quiz";
+import type { QuizQuestion, SoloMode } from "@/app/actions/quiz";
+import {
+  applyIncorrectRetryResult,
+  saveQuizHistoryResult,
+  type QuestionResultRecord,
+  type QuizPayload,
+} from "@/lib/soloQuizHistory";
 
-interface QuizPayload {
+interface QuizClientPayload extends QuizPayload {
   quizzes: QuizQuestion[];
-  repoFullName: string;
-  difficulty: "easy" | "normal" | "hard";
-  questionCount: 5 | 10 | 15;
-  createdAt: number;
+  mode: SoloMode;
 }
 
 function formatDifficultyLabel(value: QuizPayload["difficulty"]): string {
@@ -19,17 +22,19 @@ function formatDifficultyLabel(value: QuizPayload["difficulty"]): string {
 }
 
 export default function SoloQuizClient() {
-  const [payload, setPayload] = useState<QuizPayload | null>(null);
+  const [payload, setPayload] = useState<QuizClientPayload | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
+  const [questionResults, setQuestionResults] = useState<QuestionResultRecord[]>([]);
+  const [isResultSaved, setIsResultSaved] = useState(false);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("solo_quiz_payload");
     if (!raw) return;
     try {
-      const parsed = JSON.parse(raw) as QuizPayload;
+      const parsed = JSON.parse(raw) as QuizClientPayload;
       if (!parsed || !Array.isArray(parsed.quizzes) || parsed.quizzes.length === 0) return;
       setPayload(parsed);
     } catch (error) {
@@ -48,6 +53,35 @@ export default function SoloQuizClient() {
     !!currentQuiz &&
     selectedAnswerIndex !== null &&
     selectedAnswerIndex === currentQuiz.answerIndex;
+  const setupHref = `/solo/setup?mode=${payload?.mode ?? "product"}`;
+
+  useEffect(() => {
+    if (!payload || !isFinished || isResultSaved) return;
+    const result = {
+      correctCount,
+      totalCount: quizzes.length,
+      completedAt: Date.now(),
+      questionResults,
+    };
+
+    if (payload.retryContext?.mode === "all") {
+      setIsResultSaved(true);
+      return;
+    }
+
+    if (payload.retryContext?.mode === "incorrect") {
+      applyIncorrectRetryResult(
+        payload.retryContext.sourceHistoryId,
+        payload.retryContext.originalQuestionIndexes,
+        questionResults,
+      );
+      setIsResultSaved(true);
+      return;
+    }
+
+    saveQuizHistoryResult(payload, result);
+    setIsResultSaved(true);
+  }, [correctCount, isFinished, isResultSaved, payload, questionResults, quizzes.length]);
 
   function handleAnswerSelect(index: number) {
     if (showAnswer || !currentQuiz) return;
@@ -56,9 +90,18 @@ export default function SoloQuizClient() {
 
   function handleConfirmAnswer() {
     if (!currentQuiz || selectedAnswerIndex === null || showAnswer) return;
-    if (selectedAnswerIndex === currentQuiz.answerIndex) {
+    const isCorrect = selectedAnswerIndex === currentQuiz.answerIndex;
+    if (isCorrect) {
       setCorrectCount((count) => count + 1);
     }
+    setQuestionResults((records) => [
+      ...records,
+      {
+        questionIndex: currentQuestionIndex,
+        selectedAnswerIndex,
+        isCorrect,
+      },
+    ]);
     setShowAnswer(true);
   }
 
@@ -76,7 +119,7 @@ export default function SoloQuizClient() {
           クイズデータが見つかりませんでした。
         </p>
         <Link
-          href="/solo"
+          href={setupHref}
           className="inline-block mt-4 text-xs text-blue-600 dark:text-blue-400 hover:underline"
         >
           1人プレイ設定に戻る →
@@ -96,7 +139,7 @@ export default function SoloQuizClient() {
           対象: {payload.repoFullName}
         </p>
         <div className="mt-4 flex items-center gap-4">
-          <Link href="/solo" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+          <Link href={setupHref} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
             設定へ戻る
           </Link>
         </div>

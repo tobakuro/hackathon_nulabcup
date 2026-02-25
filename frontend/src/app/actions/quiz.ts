@@ -5,7 +5,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../../db";
 import { repositories, repositoryFiles } from "../../db/schema";
 
-const SYSTEM_PROMPT = `
+const PRODUCT_MODE_SYSTEM_PROMPT = `
 指示
 あなたは優秀なフルスタックエンジニア兼プログラミング講師です。
 提供されたリポジトリのソースコードを深く分析し、ユーザーが自分のプロダクトの「実装の詳細」と「設計意図」を覚えているかを確認するための技術クイズを合計10問生成してください。
@@ -16,6 +16,39 @@ Lv3（上級）: （認証フローの詳細、エッジケース対策、セキ
 厳守事項（ハルシネーション対策）
 コードへの忠実性: 提供されたコード内に実在する「具体的な変数名」「関数名」「ファイルパス」を必ず問題に含めてください。
 一般的知識の排除: 「ReactのuseStateとは？」のような一般的な質問は禁止です。「このリポジトリの○○コンポーネントでuseStateを使って管理している状態は何ですか？」のように、コードを見なければ解けない問題にしてください。
+偽情報の禁止: 実在しないライブラリ名や関数名を「正解」として扱うことは厳禁です。
+クイズ形式
+4択問題（正解は常に1つ）。
+Tips（解説）はMarkdown形式で記述してください。
+Tipsには、該当するコードの断片を引用し、「なぜそれが正解なのか」を論理的に説明してください。
+Tipsには可能であれば、選択肢の技術が一般的にどのように使われているか例を示してください。
+README.md や docs だけに依存した問題は作らず、必ず実装コード（.ts/.tsx/.js/.jsx/.go など）から出題してください。
+出力形式 (JSON)
+必ず以下のスキーマに従った1つのJSONオブジェクトとして出力してください。
+{
+"quizzes": [
+{
+"difficulty": "Lv1",
+"question": "問題文をここに記述",
+"options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4"],
+"answerIndex": 0,
+"tips": "### 解説\\nここにMarkdownで記述",
+"relatedFile": "src/components/Example.tsx"
+}
+]
+}
+`;
+
+const TECH_MODE_SYSTEM_PROMPT = `
+指示
+あなたは優秀なフルスタックエンジニア兼プログラミング講師です。
+提供されたリポジトリのソースコードを深く分析し、ユーザーのプロダクトの範囲内で、一般的な技術の知識があれば解けるような問題を作成してくさい。
+構成案
+Lv1（初級）: （ディレクトリ構造、package.jsonの依存関係、主要技術スタック）
+Lv2（中級）: （関数の引数/戻り値、コンポーネント間のProps、処理の実行順序）
+Lv3（上級）: （認証フローの詳細、エッジケース対策、セキュリティ、特定の技術選定の理由）
+厳守事項（ハルシネーション対策）
+コードへの忠実性: 提供されたコード内に実在する「具体的な変数名」「関数名」「ファイルパス」を必ず問題に含めてください.
 偽情報の禁止: 実在しないライブラリ名や関数名を「正解」として扱うことは厳禁です。
 クイズ形式
 4択問題（正解は常に1つ）。
@@ -55,10 +88,12 @@ export interface QuizBatch {
 import { isQuizCandidatePath } from "@/lib/quiz-utils";
 
 export type SoloDifficulty = "easy" | "normal" | "hard";
+export type SoloMode = "product" | "tech";
 
 export interface QuizGenerationOptions {
   difficulty?: SoloDifficulty;
   questionCount?: number;
+  mode?: SoloMode;
 }
 
 const SOLO_DIFFICULTY_TO_LEVEL: Record<SoloDifficulty, QuizQuestion["difficulty"]> = {
@@ -180,7 +215,9 @@ export async function generateQuizBatchAction(
 
   try {
     const constraintPrompt = buildConstraintPrompt(options);
-    const finalPrompt = `${SYSTEM_PROMPT}\n\n${constraintPrompt}\n\n# 解析対象ソースコード\n${combinedCode}`;
+    const systemPrompt =
+      options?.mode === "tech" ? TECH_MODE_SYSTEM_PROMPT : PRODUCT_MODE_SYSTEM_PROMPT;
+    const finalPrompt = `${systemPrompt}\n\n${constraintPrompt}\n\n# 解析対象ソースコード\n${combinedCode}`;
     const result = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: finalPrompt,

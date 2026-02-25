@@ -4,16 +4,22 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LoadedRepository } from "@/app/actions/github";
-import { generateQuizBatchAction, type SoloDifficulty } from "@/app/actions/quiz";
+import {
+  generateQuizBatchAction,
+  type SoloDifficulty,
+  type SoloMode,
+} from "@/app/actions/quiz";
+import { appendQuizHistory, type QuizPayload } from "@/lib/soloQuizHistory";
 
 type Difficulty = "easy" | "normal" | "hard";
 type QuestionCount = 5 | 10 | 15;
 
 interface SoloSettingsProps {
   loadedRepos: LoadedRepository[];
+  mode: SoloMode;
 }
 
-export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
+export default function SoloSettings({ loadedRepos, mode }: SoloSettingsProps) {
   const router = useRouter();
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
@@ -53,6 +59,7 @@ export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
 
     try {
       const generated = await generateQuizBatchAction(repo.owner, repo.name, "", targetFiles, {
+        mode,
         difficulty: difficulty as SoloDifficulty,
         questionCount,
       });
@@ -61,16 +68,21 @@ export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
         return;
       }
 
+      const payload: QuizPayload = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        quizzes: generated.quizzes,
+        repoFullName: repo.fullName,
+        mode,
+        difficulty,
+        questionCount,
+        createdAt: Date.now(),
+      };
+
       sessionStorage.setItem(
         "solo_quiz_payload",
-        JSON.stringify({
-          quizzes: generated.quizzes,
-          repoFullName: repo.fullName,
-          difficulty,
-          questionCount,
-          createdAt: Date.now(),
-        }),
+        JSON.stringify(payload),
       );
+      appendQuizHistory(payload);
       router.push("/solo/quiz");
     } catch (error) {
       console.error(error);
