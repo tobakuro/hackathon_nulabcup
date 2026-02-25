@@ -42,6 +42,7 @@ func NewRouter(
 	if os.Getenv("ENV") == "development" && devHandler != nil {
 		dev := e.Group("/api/dev")
 		dev.POST("/enqueue-test-user", devHandler.EnqueueTestUser)
+		dev.POST("/start-bot-match", devHandler.StartBotMatch)
 	}
 
 	return e
