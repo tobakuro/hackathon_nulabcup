@@ -41,10 +41,10 @@ export default async function ReposPage() {
             </div>
           </div>
           <Link
-            href="/lobby"
+            href="/home"
             className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
           >
-            ← ロビーに戻る
+            ← ホームに戻る
           </Link>
         </main>
       </div>
@@ -71,7 +71,7 @@ export default async function ReposPage() {
       {/* Header */}
       <header className="relative z-10 flex items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 px-4 py-3 md:px-6 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm">
         <Link
-          href="/lobby"
+          href="/home"
           className="flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
         >
           <svg

@@ -70,10 +70,10 @@ export default async function LobbyPage() {
 
         {/* Back Link */}
         <Link
-          href="/"
+          href="/home"
           className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
         >
-          ← トップページに戻る
+          ← ホームに戻る
         </Link>
       </main>
     </div>
