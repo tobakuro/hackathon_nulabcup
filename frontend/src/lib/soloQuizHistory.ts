@@ -157,3 +157,11 @@ export function clearQuizHistory() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(HISTORY_STORAGE_KEY);
 }
+
+export function deleteQuizHistoryByIds(ids: string[]) {
+  if (ids.length === 0) return;
+  const targetIds = new Set(ids);
+  const current = loadQuizHistory();
+  const next = current.filter((item) => !targetIds.has(item.id));
+  saveQuizHistory(next);
+}

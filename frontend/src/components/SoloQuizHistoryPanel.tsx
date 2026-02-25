@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   clearQuizHistory,
+  deleteQuizHistoryByIds,
   loadQuizHistory,
   type Difficulty,
   type QuestionResultRecord,
@@ -54,9 +55,7 @@ function renderQuestionList(
                 <p className="text-xs font-medium text-zinc-900 dark:text-white">
                   Q{record.questionIndex + 1}. {quiz.question}
                 </p>
-                <p className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300">
-                  あなたの解答: {selected}
-                </p>
+                <p className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300">あなたの解答: {selected}</p>
                 <p className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300">正解: {correct}</p>
                 <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
                   解説: {quiz.tips}
@@ -73,6 +72,7 @@ function renderQuestionList(
 export default function SoloQuizHistoryPanel() {
   const router = useRouter();
   const [history, setHistory] = useState<QuizHistoryItem[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
     setHistory(loadQuizHistory());
@@ -84,6 +84,20 @@ export default function SoloQuizHistoryPanel() {
   function handleClearHistory() {
     clearQuizHistory();
     setHistory([]);
+    setSelectedIds([]);
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((itemId) => itemId !== id) : [...current, id],
+    );
+  }
+
+  function handleDeleteSelected() {
+    if (selectedIds.length === 0) return;
+    deleteQuizHistoryByIds(selectedIds);
+    setHistory(loadQuizHistory());
+    setSelectedIds([]);
   }
 
   function createRetryPayload(
@@ -131,12 +145,21 @@ export default function SoloQuizHistoryPanel() {
       <div className="p-5 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">クイズ履歴</h2>
         {hasItems && (
-          <button
-            onClick={handleClearHistory}
-            className="text-[11px] text-zinc-500 hover:text-red-500 transition-colors"
-          >
-            すべて削除
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleDeleteSelected}
+              disabled={selectedIds.length === 0}
+              className="text-[11px] text-zinc-500 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              選択削除
+            </button>
+            <button
+              onClick={handleClearHistory}
+              className="text-[11px] text-zinc-500 hover:text-red-500 transition-colors"
+            >
+              すべて削除
+            </button>
+          </div>
         )}
       </div>
 
@@ -158,13 +181,23 @@ export default function SoloQuizHistoryPanel() {
                 className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white/70 dark:bg-zinc-900/60"
               >
                 <div className="p-3">
-                  <div className="min-w-0">
+                  <label className="inline-flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(item.id)}
+                      onChange={() => toggleSelect(item.id)}
+                      className="accent-red-500"
+                    />
+                    選択
+                  </label>
+
+                  <div className="mt-2 min-w-0">
                     <p className="text-xs font-medium text-zinc-900 dark:text-white truncate">
                       {item.repoFullName}
                     </p>
                     <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                      {formatDate(item.createdAt)} / 難易度:{" "}
-                      {formatDifficultyLabel(item.difficulty)} / 問題数: {item.questionCount}
+                      {formatDate(item.createdAt)} / 難易度: {formatDifficultyLabel(item.difficulty)} / 問題数:{" "}
+                      {item.questionCount}
                     </p>
                     <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
                       {item.result
