@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { db } from "../../db/index";
 import { repositories, repositoryFiles } from "../../db/schema";
 import { eq } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 
 import { GoogleGenAI } from "@google/genai";
 
@@ -334,12 +335,50 @@ export async function getRepoDependencies(
       });
     } catch (dbError) {
       console.error("Failed to save raw files to DB:", dbError);
-      // DB保存に失敗しても表示用データは返すようにする
+      throw new Error("DB保存に失敗しました。PostgreSQL接続を確認してください。");
     }
 
     return report;
   } catch (e) {
     console.error("AI Analysis failed:", e);
     return null;
+  }
+}
+
+/**
+ * DBに保存済みのリポジトリ情報の型
+ */
+export interface LoadedRepository {
+  id: string;
+  owner: string;
+  name: string;
+  fullName: string;
+  summaryJson: AIAnalysisReport | null;
+  updatedAt: Date;
+}
+
+/**
+ * Server Action: DBに保存済み（読み取り済み）のリポジトリ一覧を取得する
+ */
+export async function getLoadedRepositories(): Promise<LoadedRepository[]> {
+  await getAccessToken(); // 認証チェック（未認証時はエラーをスロー）
+
+  try {
+    const rows = await db
+      .select({
+        id: repositories.id,
+        owner: repositories.owner,
+        name: repositories.name,
+        fullName: repositories.fullName,
+        summaryJson: repositories.summaryJson,
+        updatedAt: repositories.updatedAt,
+      })
+      .from(repositories)
+      .orderBy(desc(repositories.updatedAt));
+
+    return rows as LoadedRepository[];
+  } catch (error) {
+    console.warn("Failed to fetch loaded repositories from DB:", error);
+    return [];
   }
 }

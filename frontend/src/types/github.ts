@@ -6,6 +6,7 @@ export interface GitHubRepo {
   html_url: string;
   language: string | null;
   default_branch: string;
+  stargazers_count: number;
   owner: {
     login: string;
   };
