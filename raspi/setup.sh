@@ -58,7 +58,10 @@ if [ ! -d "/opt/backend" ]; then
   sudo chown "${USER}:${USER}" /opt/backend
   log "/opt/backend を作成しました"
 else
-  log "/opt/backend はすでに存在します"
+  log "/opt/backend はすでに存在します（オーナーと書き込み権限を確認します）"
+  sudo chown "${USER}:${USER}" /opt/backend
+  test -w /opt/backend || die "/opt/backend への書き込み権限がありません"
+  log "/opt/backend の権限: OK"
 fi
 
 # ============================================================

@@ -19,20 +19,24 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
+              - 'raspi/backend.service'
+              - 'devbox.json'
+              - 'devbox.lock'
             frontend:
               - 'frontend/**'
+              - 'raspi/frontend.service'
               - 'devbox.json'
               - 'devbox.lock'
 
   deploy-backend:
     needs: filter
     if: needs.filter.outputs.backend == 'true'
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, ARM64]
     steps:
       - uses: actions/checkout@v4
 
       - name: devbox を PATH に追加
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: backend/.env を生成
         env:
@@ -47,6 +51,14 @@ jobs:
           REDIS_PASSWORD: ${{ secrets.BACKEND_REDIS_PASSWORD }}
           REDIS_DB: ${{ secrets.BACKEND_REDIS_DB }}
         run: |
+          missing=()
+          [ -z "${DB_HOST}" ]     && missing+=("BACKEND_DB_HOST")
+          [ -z "${DB_USER}" ]     && missing+=("BACKEND_DB_USER")
+          [ -z "${DB_PASSWORD}" ] && missing+=("BACKEND_DB_PASSWORD")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "必須 Secret が未設定です: ${missing[*]}" >&2
+            exit 1
+          fi
           {
             echo "SERVER_PORT=${SERVER_PORT:-8080}"
             echo "DB_HOST=${DB_HOST}"
@@ -86,12 +98,12 @@ jobs:
   deploy-frontend:
     needs: filter
     if: needs.filter.outputs.frontend == 'true'
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, ARM64]
     steps:
       - uses: actions/checkout@v4
 
       - name: devbox を PATH に追加
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: frontend/.env を生成
         # GITHUB_ID は GitHub Actions の予約変数と衝突するため、Secret 名に FRONTEND_ プレフィックスを付ける
