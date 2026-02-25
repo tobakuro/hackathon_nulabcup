@@ -20,12 +20,15 @@ type WSMessage struct {
 type Hub struct {
 	connections map[uuid.UUID]*websocket.Conn
 	usecase     *usecase.MatchmakingUsecase
-	mu          sync.RWMutex
+	// Bot 向けマッチ通知サブスクライバ (userID → channel)
+	matchSubs map[uuid.UUID]chan<- *usecase.MatchmakingResult
+	mu        sync.RWMutex
 }
 
 func NewHub(uc *usecase.MatchmakingUsecase) *Hub {
 	return &Hub{
 		connections: make(map[uuid.UUID]*websocket.Conn),
+		matchSubs:   make(map[uuid.UUID]chan<- *usecase.MatchmakingResult),
 		usecase:     uc,
 	}
 }
@@ -46,6 +49,21 @@ func (h *Hub) Unregister(userID uuid.UUID) {
 	if err := h.usecase.LeaveQueue(ctx, userID); err != nil {
 		log.Printf("hub: failed to leave queue for %s: %v", userID, err)
 	}
+}
+
+// SubscribeMatch は userID のマッチ成立を待つチャネルを登録する
+// 呼び出し元は UnsubscribeMatch で必ずクリーンアップすること
+func (h *Hub) SubscribeMatch(userID uuid.UUID, ch chan<- *usecase.MatchmakingResult) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.matchSubs[userID] = ch
+}
+
+// UnsubscribeMatch はサブスクライバを削除する
+func (h *Hub) UnsubscribeMatch(userID uuid.UUID) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.matchSubs, userID)
 }
 
 func (h *Hub) SendToUser(userID uuid.UUID, msg WSMessage) {
@@ -103,6 +121,24 @@ func (h *Hub) Run(ctx context.Context) {
 			}
 			h.mu.RUnlock()
 			log.Printf("hub: current connections: %v", connIDs)
+
+			// Bot サブスクライバに通知
+			h.mu.RLock()
+			sub1, ok1 := h.matchSubs[result.Room.Player1ID]
+			sub2, ok2 := h.matchSubs[result.Room.Player2ID]
+			h.mu.RUnlock()
+			if ok1 {
+				select {
+				case sub1 <- result:
+				default:
+				}
+			}
+			if ok2 {
+				select {
+				case sub2 <- result:
+				default:
+				}
+			}
 
 			// Player1 に通知
 			h.SendToUser(result.Room.Player1ID, WSMessage{
