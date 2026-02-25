@@ -1,4 +1,4 @@
-import type { QuizQuestion } from "@/app/actions/quiz";
+import type { QuizQuestion, SoloMode } from "@/app/actions/quiz";
 
 export type Difficulty = "easy" | "normal" | "hard";
 export type QuestionCount = number;
@@ -8,6 +8,7 @@ export interface QuizPayload {
   id: string;
   quizzes: QuizQuestion[];
   repoFullName: string;
+  mode: SoloMode;
   difficulty: Difficulty;
   questionCount: QuestionCount;
   createdAt: number;
@@ -38,6 +39,28 @@ export interface QuizHistoryItem extends QuizPayload {
 const HISTORY_STORAGE_KEY = "solo_quiz_history";
 const HISTORY_MAX_ITEMS = 20;
 
+function isValidQuizQuestion(value: unknown): value is QuizQuestion {
+  if (typeof value !== "object" || value === null) return false;
+
+  const candidate = value as Partial<QuizQuestion>;
+  return (
+    typeof candidate.question === "string" &&
+    Array.isArray(candidate.options) &&
+    typeof candidate.answerIndex === "number"
+  );
+}
+
+function isValidQuizHistoryItem(value: unknown): value is QuizHistoryItem {
+  if (typeof value !== "object" || value === null) return false;
+
+  const candidate = value as Partial<QuizHistoryItem>;
+  return (
+    typeof candidate.id === "string" &&
+    Array.isArray(candidate.quizzes) &&
+    candidate.quizzes.every((quiz) => isValidQuizQuestion(quiz))
+  );
+}
+
 export function loadQuizHistory(): QuizHistoryItem[] {
   if (typeof window === "undefined") return [];
 
@@ -47,9 +70,8 @@ export function loadQuizHistory(): QuizHistoryItem[] {
   try {
     const parsed = JSON.parse(raw) as QuizHistoryItem[];
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item) => item && typeof item.id === "string");
-  } catch (error) {
-    console.error(error);
+    return parsed.filter((item): item is QuizHistoryItem => isValidQuizHistoryItem(item));
+  } catch {
     return [];
   }
 }
@@ -62,19 +84,6 @@ function saveQuizHistory(items: QuizHistoryItem[]) {
 export function appendQuizHistory(payload: QuizPayload) {
   const current = loadQuizHistory();
   const next = [payload, ...current].slice(0, HISTORY_MAX_ITEMS);
-  saveQuizHistory(next);
-}
-
-export function markQuizHistoryResult(quizId: string, result: QuizHistoryResult) {
-  const current = loadQuizHistory();
-  const next = current.map((item) =>
-    item.id === quizId
-      ? {
-          ...item,
-          result,
-        }
-      : item,
-  );
   saveQuizHistory(next);
 }
 
@@ -156,4 +165,12 @@ export function applyIncorrectRetryResult(
 export function clearQuizHistory() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(HISTORY_STORAGE_KEY);
+}
+
+export function deleteQuizHistoryByIds(ids: string[]) {
+  if (ids.length === 0) return;
+  const targetIds = new Set(ids);
+  const current = loadQuizHistory();
+  const next = current.filter((item) => !targetIds.has(item.id));
+  saveQuizHistory(next);
 }

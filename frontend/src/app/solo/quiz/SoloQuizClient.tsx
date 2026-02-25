@@ -5,19 +5,20 @@ import { useEffect, useMemo, useState } from "react";
 import {
   applyIncorrectRetryResult,
   saveQuizHistoryResult,
-  type Difficulty,
   type QuestionResultRecord,
   type QuizPayload,
 } from "@/lib/soloQuizHistory";
 
-function formatDifficultyLabel(value: Difficulty): string {
+interface QuizClientPayload extends QuizPayload {}
+
+function formatDifficultyLabel(value: QuizPayload["difficulty"]): string {
   if (value === "easy") return "かんたん";
   if (value === "normal") return "ふつう";
   return "むずかしい";
 }
 
 export default function SoloQuizClient() {
-  const [payload, setPayload] = useState<QuizPayload | null>(null);
+  const [payload, setPayload] = useState<QuizClientPayload | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -29,7 +30,7 @@ export default function SoloQuizClient() {
     const raw = sessionStorage.getItem("solo_quiz_payload");
     if (!raw) return;
     try {
-      const parsed = JSON.parse(raw) as QuizPayload;
+      const parsed = JSON.parse(raw) as QuizClientPayload;
       if (!parsed || !Array.isArray(parsed.quizzes) || parsed.quizzes.length === 0) return;
       setPayload(parsed);
     } catch (error) {
@@ -48,6 +49,7 @@ export default function SoloQuizClient() {
     !!currentQuiz &&
     selectedAnswerIndex !== null &&
     selectedAnswerIndex === currentQuiz.answerIndex;
+  const setupHref = `/solo/setup?mode=${payload?.mode ?? "product"}`;
 
   useEffect(() => {
     if (!payload || !isFinished || isResultSaved) return;
@@ -88,7 +90,6 @@ export default function SoloQuizClient() {
     if (isCorrect) {
       setCorrectCount((count) => count + 1);
     }
-
     setQuestionResults((records) => [
       ...records,
       {
@@ -114,7 +115,7 @@ export default function SoloQuizClient() {
           クイズデータが見つかりませんでした。
         </p>
         <Link
-          href="/solo"
+          href={setupHref}
           className="inline-block mt-4 text-xs text-blue-600 dark:text-blue-400 hover:underline"
         >
           1人プレイ設定に戻る →
@@ -134,8 +135,11 @@ export default function SoloQuizClient() {
           対象: {payload.repoFullName}
         </p>
         <div className="mt-4 flex items-center gap-4">
-          <Link href="/solo" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
-            1人プレイへ戻る
+          <Link
+            href={setupHref}
+            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            設定へ戻る
           </Link>
         </div>
       </div>

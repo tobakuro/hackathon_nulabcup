@@ -4,19 +4,18 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LoadedRepository } from "@/app/actions/github";
-import { generateQuizBatchAction, type SoloDifficulty } from "@/app/actions/quiz";
-import {
-  appendQuizHistory,
-  type Difficulty,
-  type QuestionCount,
-  type QuizPayload,
-} from "@/lib/soloQuizHistory";
+import { generateQuizBatchAction, type SoloDifficulty, type SoloMode } from "@/app/actions/quiz";
+import { appendQuizHistory, type QuizPayload } from "@/lib/soloQuizHistory";
+
+type Difficulty = "easy" | "normal" | "hard";
+type QuestionCount = 5 | 10 | 15;
 
 interface SoloSettingsProps {
   loadedRepos: LoadedRepository[];
+  mode: SoloMode;
 }
 
-export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
+export default function SoloSettings({ loadedRepos, mode }: SoloSettingsProps) {
   const router = useRouter();
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
@@ -26,7 +25,11 @@ export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
 
   const canStart = selectedRepo !== null;
 
-  const difficultyOptions: { value: Difficulty; label: string; color: string }[] = [
+  const difficultyOptions: {
+    value: Difficulty;
+    label: string;
+    color: string;
+  }[] = [
     { value: "easy", label: "かんたん", color: "emerald" },
     { value: "normal", label: "ふつう", color: "amber" },
     { value: "hard", label: "むずかしい", color: "red" },
@@ -56,6 +59,7 @@ export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
 
     try {
       const generated = await generateQuizBatchAction(repo.owner, repo.name, "", targetFiles, {
+        mode,
         difficulty: difficulty as SoloDifficulty,
         questionCount,
       });
@@ -64,12 +68,15 @@ export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
         return;
       }
 
+      const actualQuestionCount = generated.quizzes.length;
+
       const payload: QuizPayload = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         quizzes: generated.quizzes,
         repoFullName: repo.fullName,
+        mode,
         difficulty,
-        questionCount,
+        questionCount: actualQuestionCount,
         createdAt: Date.now(),
       };
 
@@ -244,7 +251,7 @@ export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
           onClick={handleStartQuiz}
           className="w-full py-3 bg-linear-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-200 text-sm"
         >
-          {isGenerating ? "クイズ生成中..." : "📝 クイズ開始"}
+          {isGenerating ? "クイズ生成中..." : "🚀 クイズ開始"}
         </button>
         {generationError && (
           <p className="text-center text-[11px] text-red-500 mt-2">{generationError}</p>
