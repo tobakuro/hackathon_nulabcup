@@ -6,8 +6,8 @@
 #   bash <このファイルへのパス>/raspi/setup.sh
 #
 # このスクリプトが行うこと:
-#   1. 必須ツール（docker, git）の確認
-#   2. Docker Compose の動作確認
+#   1. 必須ツール（podman, git）の確認
+#   2. podman compose の動作確認
 #   3. 旧 systemd サービスの無効化（存在する場合）
 #
 # 注意:
@@ -27,25 +27,16 @@ log "=== Step 1: 必須ツールの確認 ==="
 command -v git &>/dev/null || die "git がインストールされていません"
 log "git: OK"
 
-command -v docker &>/dev/null || die "docker がインストールされていません。https://docs.docker.com/engine/install/debian/ を参照してください"
-log "docker: $(docker --version)"
+command -v podman &>/dev/null || die "podman がインストールされていません。sudo apt install podman で導入してください"
+log "podman: $(podman --version)"
 
 # ============================================================
-# 2. Docker Compose の動作確認
+# 2. podman compose の動作確認
 # ============================================================
-log "=== Step 2: Docker Compose の動作確認 ==="
+log "=== Step 2: podman compose の動作確認 ==="
 
-docker compose version &>/dev/null || die "docker compose が利用できません。Docker Engine 20.10+ をインストールしてください"
-log "docker compose: $(docker compose version --short)"
-
-# 現在のユーザーが docker グループに所属しているか確認
-if ! docker info &>/dev/null; then
-  log "docker コマンドに権限がありません。以下を実行してください:"
-  log "  sudo usermod -aG docker \${USER}"
-  log "  newgrp docker"
-  die "docker の権限を設定してから再実行してください"
-fi
-log "docker 権限: OK"
+podman compose version &>/dev/null || die "podman compose が利用できません。pip install podman-compose で導入してください"
+log "podman compose: OK"
 
 # ============================================================
 # 3. 旧 systemd サービスの無効化（存在する場合）
@@ -88,8 +79,8 @@ log "3. Runner をサービスとして登録:"
 log "   cd ~/actions-runner && sudo ./svc.sh install && sudo ./svc.sh start"
 log ""
 log "4. main ブランチに push すると CD が動作します"
-log "   docker compose で全サービスが自動的に起動します"
+log "   podman compose で全サービスが自動的に起動します"
 log ""
 log "5. サービス状態の確認:"
-log "   docker compose -f raspi/compose.yml ps"
-log "   docker compose -f raspi/compose.yml logs -f"
+log "   podman compose -f raspi/compose.yml ps"
+log "   podman compose -f raspi/compose.yml logs -f"
