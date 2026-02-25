@@ -201,3 +201,200 @@ Next.js 16 は Node.js 22 が必要です。バージョンを確認してくだ
 ```bash
 node -v  # v22.x.x であること
 ```
+
+---
+
+## ウォークスルー：デプロイの全体像
+
+ここでは「`frontend/` 配下のコードを `main` にプッシュしてからRaspberry Pi上でサイトが動くまで」の流れを、ステップごとに解説します。
+
+### 前提
+
+```
+┌─────────────┐     Cloudflare Tunnel      ┌──────────────────────────┐
+│  ブラウザ     │ ◄──────────────────────► │  Raspberry Pi             │
+│              │   nulab.uomi.site:443     │                          │
+└─────────────┘                            │  ┌── frontend (:3002) ◄─┐│
+                                           │  ├── backend  (:8080)   ││
+      ┌─────────────┐  cloudflared SSH     │  ├── postgres (:5432)   ││
+      │ GitHub       │ ──────────────────► │  └── redis    (:6379)   ││
+      │ Actions      │  SCP + deploy       │                         ││
+      └─────────────┘                      │  .env ← GitHub Secrets  ┘│
+                                           └──────────────────────────┘
+```
+
+- フロントエンドは Next.js の **standalone モード** でビルドし、`node server.js` で実行
+- DB（PostgreSQL）はRaspberry Pi上のDockerで動いており、`localhost:5432` で接続
+- 環境変数はすべて **GitHub Secrets** で管理し、デプロイ時に raspi へ `.env` として配信
+
+---
+
+### Step 1: トリガー — `main` ブランチへのプッシュ
+
+```yaml
+# .github/workflows/frontend-deploy.yml
+on:
+  push:
+    branches: [main]
+    paths: ["frontend/**"]
+```
+
+`frontend/` 配下のファイルが `main` に入ると、GitHub Actions が起動します。
+バックエンドのコードだけ変更した場合は走りません（`paths` フィルター）。
+
+---
+
+### Step 2: CI ジョブ — 品質チェック
+
+```
+format:check → lint → typecheck → test
+```
+
+devbox 環境内でフロントエンドの品質チェックを実施します。ここで失敗するとデプロイには進みません。
+バックエンドの `backend-deploy.yml` と同じパターンです。
+
+---
+
+### Step 3: ビルド — Next.js standalone 出力
+
+```yaml
+env:
+  NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}   # https://nulab-api.uomi.site
+  NEXT_PUBLIC_WS_URL:  ${{ secrets.NEXT_PUBLIC_WS_URL }}    # wss://nulab-api.uomi.site
+run: npm run build
+```
+
+`next.config.ts` で `output: "standalone"` を設定しているため、ビルド結果には:
+- `server.js` — Node.js で直接実行可能なサーバー
+- `.next/` — ビルド済みアセット
+- `node_modules/` — 実行に必要な依存だけ含むサブセット
+
+が生成されます。`NEXT_PUBLIC_*` はビルド時にJSにインライン埋め込みされるため、この時点で渡す必要があります。
+
+---
+
+### Step 4: パッケージング — tar.gz 作成
+
+```bash
+mkdir -p dist
+cp -r .next/standalone/. dist/          # server.js + 最小node_modules
+cp -r .next/static dist/.next/static    # CSS/JS等の静的アセット
+cp -r public dist/public                # favicon等
+cp drizzle.config.ts dist/              # DBマイグレーション用
+cp -r drizzle dist/drizzle
+cp -r src/db dist/src/db
+tar -czf frontend-standalone.tar.gz -C dist .
+```
+
+standaloneは `server.js + node_modules` だけ出力しますが、静的ファイルとマイグレーション資材は手動コピーが必要です。全部まとめて1つの tar.gz にします。
+
+---
+
+### Step 5: SSH接続の準備 — cloudflared
+
+```bash
+scp -o ProxyCommand="cloudflared access ssh --hostname $RASPI_HOST ..."
+```
+
+raspiはCloudflare Tunnelの裏にいるため、直接SSHできません。
+`cloudflared` の ProxyCommand を使うことで、Cloudflare Accessを経由してSSH/SCPが可能になります。
+バックエンドデプロイの `backend-deploy.yml` とまったく同じ方式です。
+
+---
+
+### Step 6: .env 生成 — GitHub Secrets → Raspberry Pi
+
+```bash
+# GitHub Actions 上で .env ファイルを生成
+printf 'DATABASE_URL=%s\n' "$FRONTEND_DATABASE_URL"
+printf 'GITHUB_ID=%s\n'    "$FRONTEND_GITHUB_ID"
+printf 'AUTH_URL=%s\n'      "$FRONTEND_AUTH_URL"
+# ...
+
+# SCP で raspi に転送
+scp /tmp/frontend.env → /opt/frontend/.env
+chmod 600 /opt/frontend/.env
+```
+
+**ポイント:**
+- GitHub Secrets名には `FRONTEND_` プレフィックスを付けて管理（バックエンドと区別）
+- `.env` に書き出す際はプレフィックスを外す（`FRONTEND_GITHUB_ID` → `GITHUB_ID=xxx`）
+- `printf` を使うことでパスワード中の `$` `!` 等のシェルメタ文字を安全に処理
+- `.env` のパーミッションは `600`（オーナーのみ読み書き可）
+
+対応する `.env.example`:
+```dotenv
+GITHUB_ID=
+GITHUB_SECRET=
+AUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=
+GEMINI_API_KEY=
+```
+
+---
+
+### Step 7: デプロイ — 展開 & マイグレーション & 再起動
+
+```
+raspi 上で実行される処理:
+
+1. /opt/frontend/app → app.bak にバックアップ
+2. tar.gz を /opt/frontend/app に展開
+3. /opt/frontend/.env から DATABASE_URL を読み取り
+4. npx drizzle-kit migrate でスキーマ適用
+5. systemctl --user restart frontend.service
+6. 30秒間ヘルスチェック
+7. 失敗時: app.bak → app に戻してロールバック
+```
+
+---
+
+### Step 8: サービスの起動 — systemd
+
+```ini
+# raspi/frontend.service
+[Service]
+WorkingDirectory=/opt/frontend/app
+ExecStart=/usr/bin/node server.js
+
+Environment=NODE_ENV=production
+Environment=PORT=3002
+Environment=HOSTNAME=127.0.0.1
+
+EnvironmentFile=/opt/frontend/.env    ← Step 6 で配置した .env
+```
+
+systemd が `server.js` を起動し、`.env` から環境変数を読み込みます。
+- `PORT=3002` で待ち受け（3000はGrafana、3001はUptime Kumaが使用中）
+- `HOSTNAME=127.0.0.1` でローカルのみバインド（外部からはCloudflare Tunnel経由）
+
+---
+
+### Step 9: 外部アクセス — Cloudflare Tunnel
+
+```
+ブラウザ → nulab.uomi.site (HTTPS)
+                ↓
+        Cloudflare Tunnel
+                ↓
+        localhost:3002 (Next.js)
+                ↓
+        localhost:5432 (PostgreSQL)  ← DB接続はlocalhostなのでOK
+```
+
+Cloudflare Tunnel がHTTPS終端とドメインルーティングを担当。
+フロントエンドがraspi上で動くことで、PostgreSQLに `localhost` として接続でき、
+Issue #86 の「フロントエンドからDBに接続できない」問題が解決します。
+
+---
+
+### バックエンドデプロイとの比較
+
+| 項目 | バックエンド | フロントエンド |
+|------|-------------|---------------|
+| 言語 | Go (ARM64クロスコンパイル) | Node.js (standalone) |
+| 成果物 | 単一バイナリ `server` | `server.js` + `node_modules/` + `.next/` (tar.gz) |
+| 環境変数 | systemd `Environment=` | `.env` ファイル (GitHub Secretsから自動生成) |
+| マイグレーション | goose (手動) | drizzle-kit migrate (デプロイ時自動) |
+| ロールバック | なし | 自動 (app.bak から復元) |
+| ポート | 8080 | 3002 |
