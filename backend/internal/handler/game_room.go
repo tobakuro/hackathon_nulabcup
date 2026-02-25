@@ -84,11 +84,11 @@ type GameRoom struct {
 	startCh   chan struct{} // 両プレイヤーが揃った時に close される
 	msgCh     chan playerMsg
 	disconnCh chan int // 切断したプレイヤーのインデックス
+	onClose   func()   // ルーム終了時に一度だけ呼ばれるコールバック
 	id        uuid.UUID
 	mu        sync.Mutex
-	joined    int
-	onClose   func()     // ルーム終了時に一度だけ呼ばれるコールバック
 	closeOnce sync.Once
+	joined    int
 }
 
 func newGameRoom(id uuid.UUID, userRepo repository.UserRepository, onClose func()) *GameRoom {
