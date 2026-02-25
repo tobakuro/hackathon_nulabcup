@@ -61,11 +61,12 @@ export default function RepoSelector({
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Selector Row */}
       <div className="flex flex-col sm:flex-row gap-3">
         <select
           value={selectedRepoFullName}
           onChange={(e) => setSelectedRepoFullName(e.target.value)}
-          className="flex-1 p-3 border rounded-lg bg-zinc-50 dark:bg-zinc-800 dark:border-zinc-700 outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition"
+          className="flex-1 p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl bg-zinc-50 dark:bg-zinc-800 outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 text-sm"
         >
           <option value="" disabled>
             リポジトリを選択してください
@@ -80,7 +81,7 @@ export default function RepoSelector({
         <button
           onClick={handleFetchDetails}
           disabled={!selectedRepoFullName || loading}
-          className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition disabled:bg-zinc-300 dark:disabled:bg-zinc-700 disabled:cursor-not-allowed whitespace-nowrap flex justify-center items-center min-w-[120px]"
+          className="px-6 py-3 bg-linear-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100 disabled:shadow-none whitespace-nowrap flex justify-center items-center min-w-[120px]"
         >
           {loading ? (
             <div className="flex items-center gap-2">
@@ -88,26 +89,29 @@ export default function RepoSelector({
               <span className="text-sm">AI解析中...</span>
             </div>
           ) : (
-            "取得・解析"
+            "✨ 取得・解析"
           )}
         </button>
       </div>
 
+      {/* Error */}
       {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
-          {error}
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm">
+          ⚠️ {error}
         </div>
       )}
 
+      {/* Results */}
       {repoDetails && (
-        <div className="flex flex-col gap-6 p-6 bg-white dark:bg-zinc-900 rounded-2xl border shadow-sm dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex flex-col gap-6 p-6 bg-white/60 dark:bg-zinc-800/60 backdrop-blur-sm rounded-2xl border border-zinc-200 dark:border-zinc-700">
+          {/* Repo Header */}
           <header>
             <h2 className="text-2xl font-bold break-all">
               <a
                 href={repoDetails.repo.html_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:underline hover:text-blue-600 dark:hover:text-blue-400"
+                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
                 {repoDetails.repo.name}
               </a>
@@ -119,9 +123,9 @@ export default function RepoSelector({
             )}
           </header>
 
-          {/* AI解析結果セクション */}
+          {/* AI Analysis Report */}
           {repoDetails.aiReport ? (
-            <div className="bg-blue-50/50 dark:bg-blue-900/10 rounded-xl p-5 border border-blue-100 dark:border-blue-900/50">
+            <div className="bg-linear-to-br from-blue-50/80 to-purple-50/80 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl p-5 border border-blue-200/50 dark:border-blue-800/50">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-xl">✨</span>
                 <h3 className="font-bold text-blue-900 dark:text-blue-100">AI Analysis Report</h3>
@@ -154,14 +158,14 @@ export default function RepoSelector({
                     {repoDetails.aiReport.technologies.map((tech, idx) => (
                       <div
                         key={idx}
-                        className="bg-white dark:bg-zinc-800 p-3 rounded-lg border border-blue-100 dark:border-blue-900/50 shadow-sm"
+                        className="bg-white/80 dark:bg-zinc-800/80 backdrop-blur-sm p-3 rounded-xl border border-blue-100 dark:border-blue-900/50 shadow-sm hover:shadow-md transition-shadow duration-200"
                       >
                         <div className="flex items-center justify-between mb-1.5 gap-2">
                           <span className="font-bold text-sm text-blue-700 dark:text-blue-300 shrink-0">
                             {tech.name}
                           </span>
                           <span
-                            className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 truncate"
+                            className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 truncate"
                             title={tech.purpose}
                           >
                             {tech.purpose}
@@ -178,7 +182,7 @@ export default function RepoSelector({
                   </div>
                 </div>
 
-                {/* 解析ファイル一覧 */}
+                {/* Analyzed Files */}
                 {repoDetails.aiReport.analyzedFiles &&
                   repoDetails.aiReport.analyzedFiles.length > 0 && (
                     <div className="pt-4 border-t border-blue-200/50 dark:border-blue-800/40">
@@ -189,7 +193,7 @@ export default function RepoSelector({
                         {repoDetails.aiReport.analyzedFiles.map((file, idx) => (
                           <span
                             key={idx}
-                            className="px-2 py-1 text-[10px] font-mono bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800/60 break-all leading-tight"
+                            className="px-2 py-1 text-[10px] font-mono bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg border border-blue-200 dark:border-blue-800/60 break-all leading-tight"
                           >
                             {file}
                           </span>
@@ -200,12 +204,13 @@ export default function RepoSelector({
               </div>
             </div>
           ) : (
-            <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg text-sm text-zinc-500 italic">
-              コード解析レポートは生成されませんでした。（リポジトリが空の場合やAPIエラー等が原因です）
+            <div className="flex flex-col items-center gap-3 py-8 px-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl text-sm text-zinc-500 italic">
+              <span className="text-3xl">📄</span>
+              コード解析レポートは生成されませんでした
             </div>
           )}
 
-          {/* 言語情報 */}
+          {/* Languages */}
           <div className="mt-2">
             <h3 className="font-semibold text-sm text-zinc-500 mb-3 uppercase tracking-wider">
               Languages
@@ -214,7 +219,7 @@ export default function RepoSelector({
               <p className="text-sm text-zinc-500 italic">言語情報は検出されませんでした。</p>
             ) : (
               <div className="flex flex-col gap-3">
-                <div className="w-full h-3 flex rounded-full overflow-hidden">
+                <div className="w-full h-3 flex rounded-full overflow-hidden shadow-inner">
                   {repoDetails.languages.map((lang, index) => (
                     <div
                       key={lang.name}
@@ -223,6 +228,7 @@ export default function RepoSelector({
                         backgroundColor: `hsl(${(index * 137.5) % 360}, 70%, 50%)`,
                       }}
                       title={`${lang.name}: ${lang.percentage.toFixed(1)}%`}
+                      className="transition-all duration-500"
                     />
                   ))}
                 </div>
@@ -230,9 +236,9 @@ export default function RepoSelector({
                   {repoDetails.languages.map((lang, index) => (
                     <div key={lang.name} className="flex items-center gap-1.5">
                       <div
-                        className="w-3 h-3 rounded-full"
+                        className="w-3 h-3 rounded-full shadow-sm"
                         style={{ backgroundColor: `hsl(${(index * 137.5) % 360}, 70%, 50%)` }}
-                      ></div>
+                      />
                       <span className="font-medium text-zinc-700 dark:text-zinc-200">
                         {lang.name}
                       </span>
