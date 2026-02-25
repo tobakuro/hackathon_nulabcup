@@ -16,10 +16,10 @@ func NewUserHandler(uc *usecase.UserUsecase) *UserHandler {
 }
 
 // GetMe は現在のログインユーザー情報を返す
-// クエリパラメータ github_login でユーザーを特定する
+// 認証済みコンテキスト（GitHubAuthMiddleware でセット済み）からユーザーを特定する
 func (h *UserHandler) GetMe(c echo.Context) error {
-	githubLogin := c.QueryParam("github_login")
-	if githubLogin == "" {
+	githubLogin, ok := c.Get("github_login").(string)
+	if !ok || githubLogin == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
 
