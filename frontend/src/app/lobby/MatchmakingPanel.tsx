@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { getWsUrl } from "@/lib/ws";
 
@@ -103,35 +102,36 @@ export default function MatchmakingPanel({ user }: MatchmakingPanelProps) {
   }, [matchmaking, status, isDisconnectedWithError]);
 
   return (
-    <div className="flex flex-col items-center gap-6 p-6 border rounded-lg shadow-sm w-full min-w-[300px]">
-      <div className="flex items-center gap-3">
-        {user.image && (
-          <Image src={user.image} alt={user.name} width={40} height={40} className="rounded-full" />
-        )}
-        <span className="text-zinc-900 dark:text-white font-medium">{user.name}</span>
-      </div>
-
+    <div className="flex flex-col items-center gap-5 w-full">
+      {/* Error Alert */}
       {error && (
-        <div className="w-full p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-700 dark:text-red-400 text-sm text-center">
-          {error}
+        <div className="w-full p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm text-center">
+          <span className="font-medium">⚠️ {error}</span>
         </div>
       )}
 
       {matchmaking && !isDisconnectedWithError ? (
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-4 border-zinc-200 border-t-blue-600 dark:border-zinc-700 dark:border-t-blue-400 rounded-full animate-spin" />
-          <p className="text-zinc-600 dark:text-zinc-400">対戦相手を探しています...</p>
+        <div className="flex flex-col items-center gap-5 w-full py-4">
+          {/* Animated searching indicator */}
+          <div className="relative">
+            <div className="w-16 h-16 rounded-full border-4 border-zinc-200 dark:border-zinc-700 border-t-blue-600 dark:border-t-blue-400 animate-spin" />
+            <span className="absolute inset-0 flex items-center justify-center text-2xl">🔍</span>
+          </div>
+          <div className="text-center">
+            <p className="font-medium text-zinc-900 dark:text-white">対戦相手を探しています...</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">しばらくお待ちください</p>
+          </div>
           <div className="flex gap-2">
             <button
               onClick={handleCancel}
-              className="px-4 py-2 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded hover:bg-zinc-300 dark:hover:bg-zinc-600 transition"
+              className="px-5 py-2.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all duration-200"
             >
               キャンセル
             </button>
             {process.env.NODE_ENV === "development" && (
               <button
                 onClick={handleAddTestUser}
-                className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition text-sm"
+                className="px-5 py-2.5 text-sm font-medium text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-900/30 rounded-xl hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-all duration-200"
               >
                 DEV: Bot追加
               </button>
@@ -142,20 +142,23 @@ export default function MatchmakingPanel({ user }: MatchmakingPanelProps) {
           )}
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-4 w-full py-2">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            準備ができたらボタンを押してください
+          </p>
           {isDisconnectedWithError ? (
             <button
               onClick={handleRetry}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+              className="w-full px-6 py-3.5 bg-linear-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] transition-all duration-200"
             >
-              再試行
+              🔄 再試行
             </button>
           ) : (
             <button
               onClick={handleStart}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+              className="w-full px-6 py-3.5 bg-linear-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] transition-all duration-200"
             >
-              対戦を探す
+              ⚔️ 対戦を探す
             </button>
           )}
         </div>

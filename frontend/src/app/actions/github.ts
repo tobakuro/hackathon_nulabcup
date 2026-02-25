@@ -1,10 +1,23 @@
 "use server";
 
+import { auth } from "@/auth";
 import { db } from "../../db/index";
 import { repositories, repositoryFiles } from "../../db/schema";
 import { eq } from "drizzle-orm";
 
 import { GoogleGenAI } from "@google/genai";
+
+/**
+ * auth()からアクセストークンを取得するヘルパー
+ * 未認証の場合はエラーをスロー
+ */
+async function getAccessToken(): Promise<string> {
+  const session = await auth();
+  if (!session?.accessToken) {
+    throw new Error("未認証です。ログインしてください。");
+  }
+  return session.accessToken;
+}
 
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 10000) {
   const controller = new AbortController();
@@ -17,15 +30,9 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 1
   }
 }
 
-function validateRepoParams(
-  owner: string,
-  repo: string,
-  accessToken: string,
-  defaultBranch?: string,
-) {
+function validateRepoParams(owner: string, repo: string, defaultBranch?: string) {
   if (!owner) throw new Error("missing owner");
   if (!repo) throw new Error("missing repo");
-  if (!accessToken) throw new Error("missing accessToken");
   if (defaultBranch !== undefined && !defaultBranch) throw new Error("missing defaultBranch");
 
   if (!/^[\w.-]+$/.test(owner)) throw new Error("invalid owner format");
@@ -36,15 +43,14 @@ function validateRepoParams(
  * Server Action: 指定したリポジトリの使用言語とそのバイト数を取得する
  * @param owner リポジトリのオーナー名
  * @param repo リポジトリ名
- * @param accessToken ユーザーのGitHubアクセストークン
  * @returns 言語名とバイト数のオブジェクト (例: { "TypeScript": 1000, "HTML": 500 })
  */
 export async function getRepoLanguages(
   owner: string,
   repo: string,
-  accessToken: string,
 ): Promise<Record<string, number>> {
-  validateRepoParams(owner, repo, accessToken);
+  validateRepoParams(owner, repo);
+  const accessToken = await getAccessToken();
 
   const res = await fetchWithTimeout(
     `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/languages`,
@@ -85,15 +91,14 @@ export interface AIAnalysisReport {
  * @param owner リポジトリのオーナー名
  * @param repo リポジトリ名
  * @param defaultBranch デフォルトブランチ名 (main, masterなど)
- * @param accessToken ユーザーのGitHubアクセストークン
  */
 export async function getRepoDependencies(
   owner: string,
   repo: string,
   defaultBranch: string,
-  accessToken: string,
 ): Promise<AIAnalysisReport | null> {
-  validateRepoParams(owner, repo, accessToken, defaultBranch);
+  validateRepoParams(owner, repo, defaultBranch);
+  const accessToken = await getAccessToken();
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {

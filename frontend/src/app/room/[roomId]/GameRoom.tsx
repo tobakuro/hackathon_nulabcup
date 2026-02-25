@@ -23,48 +23,66 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
     connect();
   }, [connect]);
 
-  const statusLabel: Record<string, string> = {
-    connecting: "接続中...",
-    connected: "接続完了",
-    disconnected: "切断",
-    error: "接続エラー",
+  const statusConfig: Record<string, { label: string; color: string; dotColor: string }> = {
+    connecting: {
+      label: "接続中...",
+      color: "text-yellow-600 dark:text-yellow-400",
+      dotColor: "bg-yellow-500 animate-pulse",
+    },
+    connected: {
+      label: "接続完了",
+      color: "text-emerald-600 dark:text-emerald-400",
+      dotColor: "bg-emerald-500",
+    },
+    disconnected: {
+      label: "切断",
+      color: "text-zinc-500 dark:text-zinc-400",
+      dotColor: "bg-zinc-400",
+    },
+    error: {
+      label: "接続エラー",
+      color: "text-red-600 dark:text-red-400",
+      dotColor: "bg-red-500",
+    },
   };
 
-  const statusColor: Record<string, string> = {
-    connecting: "text-yellow-500",
-    connected: "text-green-500",
-    disconnected: "text-zinc-400",
-    error: "text-red-500",
-  };
+  const currentStatus = statusConfig[status] ?? statusConfig.disconnected;
 
   return (
-    <div className="flex flex-col items-center gap-6 min-w-[300px]">
-      <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">ルーム: {roomId}</h1>
+    <div className="flex flex-col items-center gap-6 w-full">
+      {/* Room Header */}
+      <div className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-2xl shadow-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+        <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-zinc-900 dark:text-white">🏟️ ゲームルーム</h1>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-0.5">
+              ID: {roomId.length > 8 ? `${roomId.slice(0, 8)}...` : roomId}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800">
+            <span className={`w-2 h-2 rounded-full ${currentStatus.dotColor}`} />
+            <span className={`text-xs font-medium ${currentStatus.color}`}>
+              {currentStatus.label}
+            </span>
+          </div>
+        </div>
 
-      <div className="flex items-center gap-2">
-        <span
-          className={`w-2 h-2 rounded-full inline-block ${
-            status === "connected"
-              ? "bg-green-500"
-              : status === "connecting"
-                ? "bg-yellow-500 animate-pulse"
-                : status === "error"
-                  ? "bg-red-500"
-                  : "bg-zinc-400"
-          }`}
-        />
-        <span className={`text-sm ${statusColor[status]}`}>{statusLabel[status]}</span>
+        {/* Game Area */}
+        <div className="p-8">
+          <div className="flex flex-col items-center justify-center gap-4 py-12 border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-xl">
+            <span className="text-4xl">🎮</span>
+            <p className="text-zinc-500 dark:text-zinc-400 font-medium">ゲーム画面（準備中）</p>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500">プレイヤー: {user.name}</p>
+          </div>
+        </div>
       </div>
 
-      <div className="p-6 border rounded-lg w-full text-center text-zinc-500 dark:text-zinc-400">
-        ゲーム画面（準備中）
-      </div>
-
+      {/* Back Link */}
       <Link
         href="/lobby"
-        className="px-4 py-2 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded hover:bg-zinc-300 dark:hover:bg-zinc-600 transition"
+        className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
       >
-        ロビーに戻る
+        ← ロビーに戻る
       </Link>
     </div>
   );
