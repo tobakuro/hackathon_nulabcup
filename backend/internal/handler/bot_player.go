@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand/v2"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -57,8 +58,12 @@ func RunBotPlayer(serverAddr string, roomID uuid.UUID, botUser *entity.User) {
 	time.Sleep(500 * time.Millisecond)
 
 	// Origin ヘッダーを付けてサーバー側の Origin チェックを通過させる
+	origin := os.Getenv("BOT_ORIGIN")
+	if origin == "" {
+		origin = "http://localhost:3000"
+	}
 	header := http.Header{}
-	header.Set("Origin", "http://localhost:3000")
+	header.Set("Origin", origin)
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, header)
 	if err != nil {
 		log.Printf("bot: failed to connect: %v", err)
