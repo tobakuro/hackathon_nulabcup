@@ -1,6 +1,9 @@
 "use server";
 
 import { GoogleGenAI } from "@google/genai";
+import { and, eq, inArray } from "drizzle-orm";
+import { db } from "../../db";
+import { repositories, repositoryFiles } from "../../db/schema";
 
 const SYSTEM_PROMPT = `
 指示
@@ -19,6 +22,7 @@ Lv3（上級）: 3問（認証フローの詳細、エッジケース対策、�
 Tips（解説）はMarkdown形式で記述してください。
 Tipsには、該当するコードの断片を引用し、「なぜそれが正解なのか」を論理的に説明してください。
 Tipsには可能であれば、選択肢の技術が一般的にどのように使われているかなどを説明してください。
+README.md や docs だけに依存した問題は作らず、必ず実装コード（.ts/.tsx/.js/.jsx/.go など）から出題してください。
 出力形式 (JSON)
 必ず以下のスキーマに従った1つのJSONオブジェクトとして出力してください。
 {
@@ -33,8 +37,6 @@ Tipsには可能であれば、選択肢の技術が一般的にどのように�
 }
 ]
 }
-解析対象ソースコード
-以下のコードを分析してクイズを作成してください：
 `;
 
 export interface QuizQuestion {
@@ -50,38 +52,79 @@ export interface QuizBatch {
   quizzes: QuizQuestion[];
 }
 
+function isQuizCandidatePath(path: string): boolean {
+  const lower = path.toLowerCase();
+  if (lower.endsWith("readme.md")) return false;
+  if (lower.includes("/docs/") || lower.startsWith("docs/")) return false;
+  return (
+    lower.endsWith(".ts") ||
+    lower.endsWith(".tsx") ||
+    lower.endsWith(".js") ||
+    lower.endsWith(".jsx") ||
+    lower.endsWith(".go") ||
+    lower.endsWith(".py") ||
+    lower.endsWith(".php") ||
+    lower.endsWith(".dart") ||
+    lower.endsWith(".cs") ||
+    lower.endsWith(".rb")
+  );
+}
+
 // 内部用：ファイル取得関数
-async function fetchAndCombineCode(
+async function fetchAndCombineCodeFromDb(
   owner: string,
   repo: string,
-  accessToken: string,
   targetFiles: string[],
 ): Promise<string> {
-  const headers = {
-    Authorization: `Bearer ${accessToken}`,
-    Accept: "application/vnd.github.v3+json",
-  };
+  const candidateTargetFiles = targetFiles.filter(isQuizCandidatePath);
+  const filesToRead = candidateTargetFiles.length > 0 ? candidateTargetFiles : targetFiles;
+
+  const fullName = `${owner}/${repo}`;
+  const [repository] = await db
+    .select({ id: repositories.id })
+    .from(repositories)
+    .where(eq(repositories.fullName, fullName))
+    .limit(1);
+
+  if (!repository) return "";
+
+  const rows =
+    filesToRead.length > 0
+      ? await db
+          .select({
+            filePath: repositoryFiles.filePath,
+            content: repositoryFiles.content,
+          })
+          .from(repositoryFiles)
+          .where(
+            and(
+              eq(repositoryFiles.repositoryId, repository.id),
+              inArray(repositoryFiles.filePath, filesToRead),
+            ),
+          )
+      : await db
+          .select({
+            filePath: repositoryFiles.filePath,
+            content: repositoryFiles.content,
+          })
+          .from(repositoryFiles)
+          .where(eq(repositoryFiles.repositoryId, repository.id));
 
   let combinedText = "";
 
-  for (const path of targetFiles) {
-    try {
-      const encodedPath = path.split("/").map(encodeURIComponent).join("/");
-      const res = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}`,
-        { headers, cache: "no-store" },
-      );
-
-      if (!res.ok) continue;
-      const data = await res.json();
-      if (!data.content) continue;
-
-      const decoded = Buffer.from(data.content, "base64").toString("utf-8");
-      combinedText += `\n\n=== FILE: ${path} ===\n${decoded}`;
-    } catch (error) {
-      console.error(`ファイル取得失敗: ${path}`, error);
+  if (filesToRead.length > 0) {
+    const contentByPath = new Map(rows.map((row) => [row.filePath, row.content]));
+    for (const path of filesToRead) {
+      const content = contentByPath.get(path);
+      if (!content) continue;
+      combinedText += `\n\n=== FILE: ${path} ===\n${content}`;
+    }
+  } else {
+    for (const row of rows) {
+      combinedText += `\n\n=== FILE: ${row.filePath} ===\n${row.content}`;
     }
   }
+
   return combinedText;
 }
 
@@ -92,7 +135,8 @@ export async function generateQuizBatchAction(
   accessToken: string,
   targetFiles: string[],
 ): Promise<QuizBatch | null> {
-  const combinedCode = await fetchAndCombineCode(owner, repo, accessToken, targetFiles);
+  void accessToken;
+  const combinedCode = await fetchAndCombineCodeFromDb(owner, repo, targetFiles);
   if (!combinedCode) return null;
 
   const apiKey = process.env.GEMINI_API_KEY;
