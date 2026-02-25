@@ -41,10 +41,10 @@ export default async function ReposPage() {
             </div>
           </div>
           <Link
-            href="/lobby"
+            href="/home"
             className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
           >
-            ← ロビーに戻る
+            ← ホームに戻る
           </Link>
         </main>
       </div>
