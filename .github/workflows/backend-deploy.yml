@@ -17,7 +17,6 @@ jobs:
         uses: jetify-com/devbox-install-action@v0.12.0
         with:
           enable-cache: true
-
       - name: Format check
         run: devbox run -- sh -c "cd backend && gofmt -l . | tee /tmp/gofmt.out && [ ! -s /tmp/gofmt.out ]"
 
@@ -84,10 +83,11 @@ jobs:
           CF_CLIENT_ID: ${{ secrets.CF_CLIENT_ID }}
           CF_CLIENT_SECRET: ${{ secrets.CF_CLIENT_SECRET }}
         run: |
-          ssh -o ProxyCommand="cloudflared access ssh --hostname $RASPI_HOST --id $CF_CLIENT_ID --secret $CF_CLIENT_SECRET" \
+          ssh \
+            -o ProxyCommand="cloudflared access ssh --hostname $RASPI_HOST --id $CF_CLIENT_ID --secret $CF_CLIENT_SECRET" \
             -i ~/.ssh/id_ed25519 \
-            "$RASPI_USER@$RASPI_HOST" << 'EOF'
-            set -e
+            "$RASPI_USER@$RASPI_HOST" \
+            'set -e
             mv /opt/backend/server.new /opt/backend/server
             chmod +x /opt/backend/server
             systemctl --user restart backend.service
@@ -100,5 +100,4 @@ jobs:
             done
             echo "Service failed to start!" >&2
             journalctl --user -u backend.service --no-pager -n 30 >&2
-            exit 1
-          EOF
+            exit 1'
