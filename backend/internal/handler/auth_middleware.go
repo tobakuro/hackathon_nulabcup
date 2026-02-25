@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -49,7 +50,11 @@ func resolveGitHubLogin(ctx context.Context, token string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("github api: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("auth: failed to close response body: %v", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("github api returned %d", resp.StatusCode)
