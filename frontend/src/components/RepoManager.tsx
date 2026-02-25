@@ -44,16 +44,18 @@ function formatStars(count: number): string {
 interface RepoManagerProps {
     loadedRepos: LoadedRepository[];
     unloadedRepos: GitHubRepo[];
+    allGitHubRepos: GitHubRepo[];
 }
 
-export default function RepoManager({ loadedRepos: initialLoaded, unloadedRepos: initialUnloaded }: RepoManagerProps) {
+export default function RepoManager({ loadedRepos: initialLoaded, unloadedRepos: initialUnloaded, allGitHubRepos }: RepoManagerProps) {
     const [loadedRepos, setLoadedRepos] = useState(initialLoaded);
     const [unloadedRepos, setUnloadedRepos] = useState(initialUnloaded);
-    const [loadingId, setLoadingId] = useState<number | null>(null);
+    const [loadingId, setLoadingId] = useState<string | number | null>(null);
     const [loadStep, setLoadStep] = useState<string>("");
     const [loadProgress, setLoadProgress] = useState(0);
     const [error, setError] = useState<string | null>(null);
 
+    // 未読み取りリポジトリの読み取り
     const handleLoad = async (repo: GitHubRepo) => {
         setLoadingId(repo.id);
         setLoadProgress(0);
@@ -63,18 +65,15 @@ export default function RepoManager({ loadedRepos: initialLoaded, unloadedRepos:
         try {
             const [owner, repoName] = repo.full_name.split("/");
 
-            // ステップ1: 言語情報取得
             setLoadProgress(20);
             await getRepoLanguages(owner, repoName);
 
-            // ステップ2: AI解析 + DB保存
             setLoadStep("AI解析・保存中...");
             setLoadProgress(50);
             const report = await getRepoDependencies(owner, repoName, repo.default_branch);
             setLoadProgress(100);
             setLoadStep("完了!");
 
-            // UIを更新: unloaded → loaded に移動
             setTimeout(() => {
                 setUnloadedRepos((prev) => prev.filter((r) => r.id !== repo.id));
                 setLoadedRepos((prev) => [
@@ -94,6 +93,47 @@ export default function RepoManager({ loadedRepos: initialLoaded, unloadedRepos:
             }, 600);
         } catch (err) {
             setError(err instanceof Error ? err.message : "読み取りに失敗しました");
+            setLoadingId(null);
+            setLoadProgress(0);
+            setLoadStep("");
+        }
+    };
+
+    // 読み取り済みリポジトリの再読み込み（DB上書き）
+    const handleReload = async (loaded: LoadedRepository) => {
+        setLoadingId(loaded.id);
+        setLoadProgress(0);
+        setLoadStep("再解析中...");
+        setError(null);
+
+        try {
+            // GitHub APIのdefault_branchを取得
+            const ghRepo = allGitHubRepos.find((r) => r.full_name === loaded.fullName);
+            const defaultBranch = ghRepo?.default_branch ?? "main";
+
+            setLoadProgress(20);
+            await getRepoLanguages(loaded.owner, loaded.name);
+
+            setLoadStep("AI解析・保存中...");
+            setLoadProgress(50);
+            const report = await getRepoDependencies(loaded.owner, loaded.name, defaultBranch);
+            setLoadProgress(100);
+            setLoadStep("完了!");
+
+            setTimeout(() => {
+                setLoadedRepos((prev) =>
+                    prev.map((r) =>
+                        r.id === loaded.id
+                            ? { ...r, summaryJson: report, updatedAt: new Date() }
+                            : r
+                    )
+                );
+                setLoadingId(null);
+                setLoadProgress(0);
+                setLoadStep("");
+            }, 600);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "再読み込みに失敗しました");
             setLoadingId(null);
             setLoadProgress(0);
             setLoadStep("");
@@ -155,6 +195,29 @@ export default function RepoManager({ loadedRepos: initialLoaded, unloadedRepos:
                                         <span className="px-2.5 py-0.5 text-[10px] font-medium rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
                                             読み取り済み
                                         </span>
+                                        {loadingId === repo.id ? (
+                                            <div className="flex flex-col gap-1 w-28">
+                                                <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-linear-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 ease-out"
+                                                        style={{ width: `${loadProgress}%` }}
+                                                    />
+                                                </div>
+                                                <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                                                    <div className="w-3 h-3 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                                                    <span className="truncate">{loadStep}</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => handleReload(repo)}
+                                                disabled={loadingId !== null}
+                                                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 hover:border-blue-300 dark:hover:border-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-1"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" /></svg>
+                                                再読み込み
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>

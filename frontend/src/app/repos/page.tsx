@@ -87,6 +87,7 @@ export default async function ReposPage() {
         <RepoManager
           loadedRepos={loadedRepos}
           unloadedRepos={unloadedRepos}
+          allGitHubRepos={allGitHubRepos}
         />
       </main>
     </div>

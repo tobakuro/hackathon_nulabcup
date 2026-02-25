@@ -335,7 +335,7 @@ export async function getRepoDependencies(
       });
     } catch (dbError) {
       console.error("Failed to save raw files to DB:", dbError);
-      // DB保存に失敗しても表示用データは返すようにする
+      throw new Error("DB保存に失敗しました。PostgreSQL接続を確認してください。");
     }
 
     return report;
@@ -378,7 +378,7 @@ export async function getLoadedRepositories(): Promise<LoadedRepository[]> {
 
     return rows as LoadedRepository[];
   } catch (error) {
-    console.error("Failed to fetch loaded repositories from DB:", error);
+    console.warn("Failed to fetch loaded repositories from DB:", error);
     return [];
   }
 }
