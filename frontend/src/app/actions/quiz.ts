@@ -96,7 +96,10 @@ export interface QuizGenerationOptions {
   mode?: SoloMode;
 }
 
-const SOLO_DIFFICULTY_TO_LEVEL: Record<SoloDifficulty, QuizQuestion["difficulty"]> = {
+const SOLO_DIFFICULTY_TO_LEVEL: Record<
+  SoloDifficulty,
+  QuizQuestion["difficulty"]
+> = {
   easy: "Lv1",
   normal: "Lv2",
   hard: "Lv3",
@@ -108,7 +111,9 @@ function normalizeQuestionCount(count: number | undefined): number {
   return Math.min(Math.max(normalized, 1), 30);
 }
 
-function buildConstraintPrompt(options: QuizGenerationOptions | undefined): string {
+function buildConstraintPrompt(
+  options: QuizGenerationOptions | undefined,
+): string {
   const questionCount = normalizeQuestionCount(options?.questionCount);
   const requestedLevel = options?.difficulty
     ? SOLO_DIFFICULTY_TO_LEVEL[options.difficulty]
@@ -146,7 +151,8 @@ async function fetchAndCombineCodeFromDb(
   targetFiles: string[],
 ): Promise<string> {
   const candidateTargetFiles = targetFiles.filter(isQuizCandidatePath);
-  const filesToRead = candidateTargetFiles.length > 0 ? candidateTargetFiles : targetFiles;
+  const filesToRead =
+    candidateTargetFiles.length > 0 ? candidateTargetFiles : targetFiles;
 
   const fullName = `${owner}/${repo}`;
   const [repository] = await db
@@ -182,7 +188,9 @@ async function fetchAndCombineCodeFromDb(
   let combinedText = "";
 
   if (filesToRead.length > 0) {
-    const contentByPath = new Map(rows.map((row) => [row.filePath, row.content]));
+    const contentByPath = new Map(
+      rows.map((row) => [row.filePath, row.content]),
+    );
     for (const path of filesToRead) {
       const content = contentByPath.get(path);
       if (!content) continue;
@@ -205,7 +213,11 @@ export async function generateQuizBatchAction(
   options?: QuizGenerationOptions,
 ): Promise<QuizBatch | null> {
   void accessToken;
-  const combinedCode = await fetchAndCombineCodeFromDb(owner, repo, targetFiles);
+  const combinedCode = await fetchAndCombineCodeFromDb(
+    owner,
+    repo,
+    targetFiles,
+  );
   if (!combinedCode) return null;
 
   const apiKey = process.env.GEMINI_API_KEY;
@@ -216,7 +228,9 @@ export async function generateQuizBatchAction(
   try {
     const constraintPrompt = buildConstraintPrompt(options);
     const systemPrompt =
-      options?.mode === "tech" ? TECH_MODE_SYSTEM_PROMPT : PRODUCT_MODE_SYSTEM_PROMPT;
+      options?.mode === "tech"
+        ? TECH_MODE_SYSTEM_PROMPT
+        : PRODUCT_MODE_SYSTEM_PROMPT;
     const finalPrompt = `${systemPrompt}\n\n${constraintPrompt}\n\n# 解析対象ソースコード\n${combinedCode}`;
     const result = await ai.models.generateContent({
       model: "gemini-2.5-flash",

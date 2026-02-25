@@ -18,7 +18,9 @@ function modeLabel(mode: SoloMode): string {
   return mode === "tech" ? "テックモード" : "プロダクトモード";
 }
 
-export default async function SoloSetupPage({ searchParams }: SoloSetupPageProps) {
+export default async function SoloSetupPage({
+  searchParams,
+}: SoloSetupPageProps) {
   const session = await auth();
   if (!session?.user) {
     redirect("/auth");

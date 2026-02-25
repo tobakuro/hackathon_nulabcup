@@ -70,7 +70,9 @@ export function loadQuizHistory(): QuizHistoryItem[] {
   try {
     const parsed = JSON.parse(raw) as QuizHistoryItem[];
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item): item is QuizHistoryItem => isValidQuizHistoryItem(item));
+    return parsed.filter((item): item is QuizHistoryItem =>
+      isValidQuizHistoryItem(item),
+    );
   } catch {
     return [];
   }
@@ -87,7 +89,10 @@ export function appendQuizHistory(payload: QuizPayload) {
   saveQuizHistory(next);
 }
 
-export function saveQuizHistoryResult(payload: QuizPayload, result: QuizHistoryResult) {
+export function saveQuizHistoryResult(
+  payload: QuizPayload,
+  result: QuizHistoryResult,
+) {
   const current = loadQuizHistory();
   const existingIndex = current.findIndex((item) => item.id === payload.id);
 
@@ -118,7 +123,10 @@ export function applyIncorrectRetryResult(
   if (!source?.result) return;
 
   const byQuestionIndex = new Map<number, QuestionResultRecord>(
-    source.result.questionResults.map((record) => [record.questionIndex, record]),
+    source.result.questionResults.map((record) => [
+      record.questionIndex,
+      record,
+    ]),
   );
 
   let improved = false;
@@ -143,7 +151,9 @@ export function applyIncorrectRetryResult(
   const nextQuestionResults = Array.from(byQuestionIndex.values()).sort(
     (a, b) => a.questionIndex - b.questionIndex,
   );
-  const nextCorrectCount = nextQuestionResults.filter((record) => record.isCorrect).length;
+  const nextCorrectCount = nextQuestionResults.filter(
+    (record) => record.isCorrect,
+  ).length;
 
   const next = current.map((item) =>
     item.id === sourceHistoryId
