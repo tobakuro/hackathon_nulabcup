@@ -37,20 +37,15 @@ function renderQuestionList(
 ) {
   return (
     <div className={`rounded-lg border ${borderClass} p-3`}>
-      <p className="text-xs font-semibold text-zinc-900 dark:text-white">
-        {title}
-      </p>
+      <p className="text-xs font-semibold text-zinc-900 dark:text-white">{title}</p>
       {records.length === 0 ? (
-        <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">
-          該当なし
-        </p>
+        <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">該当なし</p>
       ) : (
         <div className="mt-2 space-y-2 max-h-64 overflow-y-auto pr-1">
           {records.map((record, idx) => {
             const quiz = item.quizzes[record.questionIndex];
             if (!quiz) return null;
-            const selected =
-              quiz.options[record.selectedAnswerIndex] ?? "未回答";
+            const selected = quiz.options[record.selectedAnswerIndex] ?? "未回答";
             const correct = quiz.options[quiz.answerIndex] ?? "-";
             return (
               <article
@@ -63,9 +58,7 @@ function renderQuestionList(
                 <p className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300">
                   あなたの解答: {selected}
                 </p>
-                <p className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300">
-                  正解: {correct}
-                </p>
+                <p className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300">正解: {correct}</p>
                 <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
                   解説: {quiz.tips}
                 </p>
@@ -103,9 +96,7 @@ export default function SoloQuizHistoryPanel() {
 
   function toggleSelect(id: string) {
     setSelectedIds((current) =>
-      current.includes(id)
-        ? current.filter((itemId) => itemId !== id)
-        : [...current, id],
+      current.includes(id) ? current.filter((itemId) => itemId !== id) : [...current, id],
     );
   }
 
@@ -149,14 +140,10 @@ export default function SoloQuizHistoryPanel() {
         .map((record) => record.questionIndex) ?? [];
 
     const retryIndexes =
-      mode === "all"
-        ? item.quizzes.map((_, index) => index)
-        : incorrectQuestionIndexes;
+      mode === "all" ? item.quizzes.map((_, index) => index) : incorrectQuestionIndexes;
     const retryQuizzes = retryIndexes
       .map((index) => item.quizzes[index])
-      .filter((quiz): quiz is QuizHistoryItem["quizzes"][number] =>
-        Boolean(quiz),
-      );
+      .filter((quiz): quiz is QuizHistoryItem["quizzes"][number] => Boolean(quiz));
 
     if (retryQuizzes.length === 0) return;
 
@@ -169,9 +156,7 @@ export default function SoloQuizHistoryPanel() {
     <section className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-2xl shadow-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
       <div className="p-5 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
-            クイズ履歴
-          </h2>
+          <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">クイズ履歴</h2>
           {selectedIds.length > 0 && (
             <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
               {selectedIds.length} 件を選択中
@@ -218,13 +203,9 @@ export default function SoloQuizHistoryPanel() {
 
           {latestItems.map((item) => {
             const correctRecords =
-              item.result?.questionResults?.filter(
-                (record) => record.isCorrect,
-              ) ?? [];
+              item.result?.questionResults?.filter((record) => record.isCorrect) ?? [];
             const incorrectRecords =
-              item.result?.questionResults?.filter(
-                (record) => !record.isCorrect,
-              ) ?? [];
+              item.result?.questionResults?.filter((record) => !record.isCorrect) ?? [];
 
             return (
               <article

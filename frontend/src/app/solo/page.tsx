@@ -49,18 +49,14 @@ export default async function SoloPage() {
 
         <div className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-2xl shadow-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
           <div className="p-6 border-b border-zinc-100 dark:border-zinc-800">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
-              モードを選択
-            </h2>
+            <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">モードを選択</h2>
           </div>
           <div className="p-6 grid grid-cols-1 gap-3">
             <Link
               href="/solo/setup?mode=tech"
               className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 hover:border-violet-400 dark:hover:border-violet-600 transition-colors"
             >
-              <p className="text-sm font-semibold text-zinc-900 dark:text-white">
-                テックモード
-              </p>
+              <p className="text-sm font-semibold text-zinc-900 dark:text-white">テックモード</p>
             </Link>
             <Link
               href="/solo/setup?mode=product"
