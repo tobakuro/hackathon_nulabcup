@@ -72,20 +72,23 @@ jobs:
           chmod 600 raspi/.env
 
       - name: コンテナイメージをビルド
-        run: podman compose -f raspi/compose.yml build
+        working-directory: raspi
+        run: podman compose build
 
       - name: コンテナを起動
-        run: podman compose -f raspi/compose.yml up -d
+        working-directory: raspi
+        run: podman compose up -d
 
       - name: 未使用イメージを削除
         run: podman image prune -f
 
       - name: コンテナ状態を確認
+        working-directory: raspi
         run: |
           sleep 5
-          podman compose -f raspi/compose.yml ps
+          podman compose ps
           # 全コンテナが running であることを確認
-          podman compose -f raspi/compose.yml ps --format json | python3 -c "
+          podman compose ps --format json | python3 -c "
           import sys, json
           data = json.load(sys.stdin)
           if not isinstance(data, list):
