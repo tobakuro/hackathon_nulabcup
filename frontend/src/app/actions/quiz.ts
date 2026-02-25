@@ -32,7 +32,7 @@ README.md や docs だけに依存した問題は作らず、必ず実装コー�
 "question": "問題文をここに記述",
 "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4"],
 "answerIndex": 0,
-"tips": "### 解説\nここにMarkdownで記述",
+"tips": "### 解説\\nここにMarkdownで記述",
 "relatedFile": "src/components/Example.tsx"
 }
 ]
@@ -54,7 +54,57 @@ export interface QuizBatch {
 
 import { isQuizCandidatePath } from "@/lib/quiz-utils";
 
-// 内部用：ファイル取得関数
+export type SoloDifficulty = "easy" | "normal" | "hard";
+
+export interface QuizGenerationOptions {
+  difficulty?: SoloDifficulty;
+  questionCount?: number;
+}
+
+const SOLO_DIFFICULTY_TO_LEVEL: Record<SoloDifficulty, QuizQuestion["difficulty"]> = {
+  easy: "Lv1",
+  normal: "Lv2",
+  hard: "Lv3",
+};
+
+function normalizeQuestionCount(count: number | undefined): number {
+  if (typeof count !== "number" || !Number.isFinite(count)) return 10;
+  const normalized = Math.floor(count);
+  return Math.min(Math.max(normalized, 1), 30);
+}
+
+function buildConstraintPrompt(options: QuizGenerationOptions | undefined): string {
+  const questionCount = normalizeQuestionCount(options?.questionCount);
+  const requestedLevel = options?.difficulty
+    ? SOLO_DIFFICULTY_TO_LEVEL[options.difficulty]
+    : undefined;
+
+  if (!requestedLevel) {
+    return `# 追加制約\n必ず${questionCount}問を生成してください。`;
+  }
+
+  return `# 追加制約
+- 出題する難易度は ${requestedLevel} のみ（他難易度は生成しない）
+- 問題数は必ず ${questionCount} 問`;
+}
+
+function applyQuizConstraints(
+  quizBatch: QuizBatch,
+  options: QuizGenerationOptions | undefined,
+): QuizBatch {
+  const requestedLevel = options?.difficulty
+    ? SOLO_DIFFICULTY_TO_LEVEL[options.difficulty]
+    : undefined;
+  const questionCount = normalizeQuestionCount(options?.questionCount);
+
+  let quizzes = quizBatch.quizzes;
+  if (requestedLevel) {
+    quizzes = quizzes.filter((quiz) => quiz.difficulty === requestedLevel);
+  }
+
+  return { quizzes: quizzes.slice(0, questionCount) };
+}
+
 async function fetchAndCombineCodeFromDb(
   owner: string,
   repo: string,
@@ -112,12 +162,12 @@ async function fetchAndCombineCodeFromDb(
   return combinedText;
 }
 
-// 公開用：クイズ生成Action
 export async function generateQuizBatchAction(
   owner: string,
   repo: string,
   accessToken: string,
   targetFiles: string[],
+  options?: QuizGenerationOptions,
 ): Promise<QuizBatch | null> {
   void accessToken;
   const combinedCode = await fetchAndCombineCodeFromDb(owner, repo, targetFiles);
@@ -129,7 +179,8 @@ export async function generateQuizBatchAction(
   const ai = new GoogleGenAI({ apiKey });
 
   try {
-    const finalPrompt = `${SYSTEM_PROMPT}\n\n# 解析対象ソースコード\n${combinedCode}`;
+    const constraintPrompt = buildConstraintPrompt(options);
+    const finalPrompt = `${SYSTEM_PROMPT}\n\n${constraintPrompt}\n\n# 解析対象ソースコード\n${combinedCode}`;
     const result = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: finalPrompt,
@@ -137,7 +188,9 @@ export async function generateQuizBatchAction(
     });
     const responseText = result.text;
     if (!responseText) return null;
-    return JSON.parse(responseText) as QuizBatch;
+    const parsed = JSON.parse(responseText) as QuizBatch;
+    if (!parsed || !Array.isArray(parsed.quizzes)) return null;
+    return applyQuizConstraints(parsed, options);
   } catch (error) {
     console.error("Gemini呼び出しエラー:", error);
     return null;
