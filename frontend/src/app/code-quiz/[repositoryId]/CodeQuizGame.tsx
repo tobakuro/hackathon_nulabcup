@@ -98,6 +98,9 @@ export default function CodeQuizGame({ repositoryId, repositoryName }: CodeQuizG
     if (!sessionId || !selectedFilePath || selectedLineNumber === null) return;
     if (gamePhase !== "playing") return;
 
+    const audio = new Audio("/geoguessr_se.mp3");
+    audio.play().catch(() => {});
+
     const timeSpentMs = Date.now() - questionStartTime;
     const result = await submitCodeAnswerAction(
       sessionId,

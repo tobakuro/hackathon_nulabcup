@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "build:cf": "npx @opennextjs/cloudflare build",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "oxfmt",
@@ -15,6 +16,7 @@
   "dependencies": {
     "@google/genai": "^1.42.0",
     "@monaco-editor/react": "^4.7.0",
+    "@opennextjs/cloudflare": "^1.17.1",
     "drizzle-orm": "^0.45.1",
     "next": "16.1.6",
     "next-auth": "^5.0.0-beta.30",
@@ -32,6 +34,7 @@
     "oxfmt": "^0.33.0",
     "oxlint": "^1.48.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.68.1"
   }
 }
