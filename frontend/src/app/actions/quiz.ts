@@ -10,9 +10,9 @@ const SYSTEM_PROMPT = `
 あなたは優秀なフルスタックエンジニア兼プログラミング講師です。
 提供されたリポジトリのソースコードを深く分析し、ユーザーが自分のプロダクトの「実装の詳細」と「設計意図」を覚えているかを確認するための技術クイズを合計10問生成してください。
 構成案
-Lv1（初級）: 3問（ディレクトリ構造、package.jsonの依存関係、主要技術スタック）
-Lv2（中級）: 4問（関数の引数/戻り値、コンポーネント間のProps、処理の実行順序）
-Lv3（上級）: 3問（認証フローの詳細、エッジケース対策、セキュリティ、特定の技術選定の理由）
+Lv1（初級）: （ディレクトリ構造、package.jsonの依存関係、主要技術スタック）
+Lv2（中級）: （関数の引数/戻り値、コンポーネント間のProps、処理の実行順序）
+Lv3（上級）: （認証フローの詳細、エッジケース対策、セキュリティ、特定の技術選定の理由）
 厳守事項（ハルシネーション対策）
 コードへの忠実性: 提供されたコード内に実在する「具体的な変数名」「関数名」「ファイルパス」を必ず問題に含めてください。
 一般的知識の排除: 「ReactのuseStateとは？」のような一般的な質問は禁止です。「このリポジトリの○○コンポーネントでuseStateを使って管理している状態は何ですか？」のように、コードを見なければ解けない問題にしてください。
@@ -21,7 +21,7 @@ Lv3（上級）: 3問（認証フローの詳細、エッジケース対策、�
 4択問題（正解は常に1つ）。
 Tips（解説）はMarkdown形式で記述してください。
 Tipsには、該当するコードの断片を引用し、「なぜそれが正解なのか」を論理的に説明してください。
-Tipsには可能であれば、選択肢の技術が一般的にどのように使われているかなどを説明してください。
+Tipsには可能であれば、選択肢の技術が一般的にどのように使われているか例を示してください。
 README.md や docs だけに依存した問題は作らず、必ず実装コード（.ts/.tsx/.js/.jsx/.go など）から出題してください。
 出力形式 (JSON)
 必ず以下のスキーマに従った1つのJSONオブジェクトとして出力してください。
@@ -32,7 +32,7 @@ README.md や docs だけに依存した問題は作らず、必ず実装コー�
 "question": "問題文をここに記述",
 "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4"],
 "answerIndex": 0,
-"tips": "### 解説\nここにMarkdownで記述",
+"tips": "### 解説\\nここにMarkdownで記述",
 "relatedFile": "src/components/Example.tsx"
 }
 ]
@@ -50,6 +50,62 @@ export interface QuizQuestion {
 
 export interface QuizBatch {
   quizzes: QuizQuestion[];
+}
+
+export type SoloDifficulty = "easy" | "normal" | "hard";
+
+export interface QuizGenerationOptions {
+  difficulty?: SoloDifficulty;
+  questionCount?: number;
+}
+
+const SOLO_DIFFICULTY_TO_LEVEL: Record<
+  SoloDifficulty,
+  QuizQuestion["difficulty"]
+> = {
+  easy: "Lv1",
+  normal: "Lv2",
+  hard: "Lv3",
+};
+
+function normalizeQuestionCount(count: number | undefined): number {
+  if (typeof count !== "number" || !Number.isFinite(count)) return 10;
+  const normalized = Math.floor(count);
+  return Math.min(Math.max(normalized, 1), 30);
+}
+
+function buildConstraintPrompt(
+  options: QuizGenerationOptions | undefined,
+): string {
+  const questionCount = normalizeQuestionCount(options?.questionCount);
+  const requestedLevel = options?.difficulty
+    ? SOLO_DIFFICULTY_TO_LEVEL[options.difficulty]
+    : undefined;
+
+  if (!requestedLevel) {
+    return `# 追加制約\n必ず${questionCount}問を生成してください。`;
+  }
+
+  return `# 追加制約
+- 出題する難易度は ${requestedLevel} のみ（他難易度は生成しない）
+- 問題数は必ず ${questionCount} 問`;
+}
+
+function applyQuizConstraints(
+  quizBatch: QuizBatch,
+  options: QuizGenerationOptions | undefined,
+): QuizBatch {
+  const requestedLevel = options?.difficulty
+    ? SOLO_DIFFICULTY_TO_LEVEL[options.difficulty]
+    : undefined;
+  const questionCount = normalizeQuestionCount(options?.questionCount);
+
+  let quizzes = quizBatch.quizzes;
+  if (requestedLevel) {
+    quizzes = quizzes.filter((quiz) => quiz.difficulty === requestedLevel);
+  }
+
+  return { quizzes: quizzes.slice(0, questionCount) };
 }
 
 function isQuizCandidatePath(path: string): boolean {
@@ -70,14 +126,14 @@ function isQuizCandidatePath(path: string): boolean {
   );
 }
 
-// 内部用：ファイル取得関数
 async function fetchAndCombineCodeFromDb(
   owner: string,
   repo: string,
   targetFiles: string[],
 ): Promise<string> {
   const candidateTargetFiles = targetFiles.filter(isQuizCandidatePath);
-  const filesToRead = candidateTargetFiles.length > 0 ? candidateTargetFiles : targetFiles;
+  const filesToRead =
+    candidateTargetFiles.length > 0 ? candidateTargetFiles : targetFiles;
 
   const fullName = `${owner}/${repo}`;
   const [repository] = await db
@@ -113,7 +169,9 @@ async function fetchAndCombineCodeFromDb(
   let combinedText = "";
 
   if (filesToRead.length > 0) {
-    const contentByPath = new Map(rows.map((row) => [row.filePath, row.content]));
+    const contentByPath = new Map(
+      rows.map((row) => [row.filePath, row.content]),
+    );
     for (const path of filesToRead) {
       const content = contentByPath.get(path);
       if (!content) continue;
@@ -128,15 +186,19 @@ async function fetchAndCombineCodeFromDb(
   return combinedText;
 }
 
-// 公開用：クイズ生成Action
 export async function generateQuizBatchAction(
   owner: string,
   repo: string,
   accessToken: string,
   targetFiles: string[],
+  options?: QuizGenerationOptions,
 ): Promise<QuizBatch | null> {
   void accessToken;
-  const combinedCode = await fetchAndCombineCodeFromDb(owner, repo, targetFiles);
+  const combinedCode = await fetchAndCombineCodeFromDb(
+    owner,
+    repo,
+    targetFiles,
+  );
   if (!combinedCode) return null;
 
   const apiKey = process.env.GEMINI_API_KEY;
@@ -145,7 +207,8 @@ export async function generateQuizBatchAction(
   const ai = new GoogleGenAI({ apiKey });
 
   try {
-    const finalPrompt = `${SYSTEM_PROMPT}\n\n# 解析対象ソースコード\n${combinedCode}`;
+    const constraintPrompt = buildConstraintPrompt(options);
+    const finalPrompt = `${SYSTEM_PROMPT}\n\n${constraintPrompt}\n\n# 解析対象ソースコード\n${combinedCode}`;
     const result = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: finalPrompt,
@@ -153,7 +216,9 @@ export async function generateQuizBatchAction(
     });
     const responseText = result.text;
     if (!responseText) return null;
-    return JSON.parse(responseText) as QuizBatch;
+    const parsed = JSON.parse(responseText) as QuizBatch;
+    if (!parsed || !Array.isArray(parsed.quizzes)) return null;
+    return applyQuizConstraints(parsed, options);
   } catch (error) {
     console.error("Gemini呼び出しエラー:", error);
     return null;
