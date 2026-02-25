@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { LoadedRepository } from "@/app/actions/github";
+import { generateQuizBatchAction, type SoloDifficulty } from "@/app/actions/quiz";
 
 type Difficulty = "easy" | "normal" | "hard";
 type QuestionCount = 5 | 10 | 15;
@@ -12,9 +14,12 @@ interface SoloSettingsProps {
 }
 
 export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
+  const router = useRouter();
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
   const [questionCount, setQuestionCount] = useState<QuestionCount>(5);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   const canStart = selectedRepo !== null;
 
@@ -26,9 +31,55 @@ export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
 
   const countOptions: QuestionCount[] = [5, 10, 15];
 
+  async function handleStartQuiz() {
+    if (!selectedRepo || isGenerating) return;
+
+    const repo = loadedRepos.find((item) => item.id === selectedRepo);
+    if (!repo) {
+      setGenerationError("リポジトリ情報の取得に失敗しました。");
+      return;
+    }
+
+    const targetFiles = repo.summaryJson?.analyzedFiles ?? [];
+    if (targetFiles.length === 0) {
+      setGenerationError("解析済みファイルが見つかりません。先にリポジトリ解析を実行してください。");
+      return;
+    }
+
+    setIsGenerating(true);
+    setGenerationError(null);
+
+    try {
+      const generated = await generateQuizBatchAction(repo.owner, repo.name, "", targetFiles, {
+        difficulty: difficulty as SoloDifficulty,
+        questionCount,
+      });
+      if (!generated || generated.quizzes.length === 0) {
+        setGenerationError("クイズ生成に失敗しました。時間をおいて再実行してください。");
+        return;
+      }
+
+      sessionStorage.setItem(
+        "solo_quiz_payload",
+        JSON.stringify({
+          quizzes: generated.quizzes,
+          repoFullName: repo.fullName,
+          difficulty,
+          questionCount,
+          createdAt: Date.now(),
+        }),
+      );
+      router.push("/solo/quiz");
+    } catch (error) {
+      console.error(error);
+      setGenerationError("クイズ生成中にエラーが発生しました。");
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
   return (
     <div className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-2xl shadow-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-      {/* リポジトリ選択 */}
       <div className="p-6 border-b border-zinc-100 dark:border-zinc-800">
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3 flex items-center gap-2">
           <svg
@@ -93,7 +144,6 @@ export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
         )}
       </div>
 
-      {/* 難易度選択 */}
       <div className="p-6 border-b border-zinc-100 dark:border-zinc-800">
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3 flex items-center gap-2">
           <svg
@@ -148,7 +198,6 @@ export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
         </div>
       </div>
 
-      {/* 問題数 */}
       <div className="p-6 border-b border-zinc-100 dark:border-zinc-800">
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3 flex items-center gap-2">
           <svg
@@ -183,17 +232,17 @@ export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
         </div>
       </div>
 
-      {/* Start Button */}
       <div className="p-6">
         <button
-          disabled={!canStart}
+          disabled={!canStart || isGenerating}
+          onClick={handleStartQuiz}
           className="w-full py-3 bg-linear-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-200 text-sm"
         >
-          🚀 クイズ開始（準備中）
+          {isGenerating ? "クイズ生成中..." : "🚀 クイズ開始"}
         </button>
-        <p className="text-center text-[11px] text-zinc-400 dark:text-zinc-500 mt-2">
-          この機能は現在開発中です
-        </p>
+        {generationError && (
+          <p className="text-center text-[11px] text-red-500 mt-2">{generationError}</p>
+        )}
       </div>
     </div>
   );
