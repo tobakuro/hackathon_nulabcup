@@ -115,7 +115,7 @@ jobs:
           FRONTEND_GITHUB_ID: ${{ secrets.FRONTEND_GITHUB_ID }}
           FRONTEND_GITHUB_SECRET: ${{ secrets.FRONTEND_GITHUB_SECRET }}
           FRONTEND_NEXTAUTH_SECRET: ${{ secrets.FRONTEND_NEXTAUTH_SECRET }}
-          FRONTEND_NEXTAUTH_URL: ${{ secrets.FRONTEND_NEXTAUTH_URL }}
+          FRONTEND_AUTH_URL: ${{ secrets.FRONTEND_AUTH_URL }}
           FRONTEND_GEMINI_API_KEY: ${{ secrets.FRONTEND_GEMINI_API_KEY }}
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
           NEXT_PUBLIC_WS_URL: ${{ secrets.NEXT_PUBLIC_WS_URL }}
@@ -125,7 +125,7 @@ jobs:
             printf 'GITHUB_ID=%s\n' "$FRONTEND_GITHUB_ID"
             printf 'GITHUB_SECRET=%s\n' "$FRONTEND_GITHUB_SECRET"
             printf 'NEXTAUTH_SECRET=%s\n' "$FRONTEND_NEXTAUTH_SECRET"
-            printf 'NEXTAUTH_URL=%s\n' "$FRONTEND_NEXTAUTH_URL"
+            printf 'AUTH_URL=%s\n' "$FRONTEND_AUTH_URL"
             printf 'GEMINI_API_KEY=%s\n' "$FRONTEND_GEMINI_API_KEY"
             printf 'NEXT_PUBLIC_API_URL=%s\n' "$NEXT_PUBLIC_API_URL"
             printf 'NEXT_PUBLIC_WS_URL=%s\n' "$NEXT_PUBLIC_WS_URL"

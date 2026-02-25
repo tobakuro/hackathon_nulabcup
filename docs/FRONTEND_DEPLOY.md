@@ -112,7 +112,7 @@ Cloudflare Zero Trust ダッシュボードで、Tunnel のルーティングを
 | `FRONTEND_GITHUB_ID`       | GitHub OAuth App の Client ID                              | GitHub OAuth 認証用              |
 | `FRONTEND_GITHUB_SECRET`   | GitHub OAuth App の Client Secret                          | GitHub OAuth 認証用              |
 | `FRONTEND_NEXTAUTH_SECRET` | `openssl rand -base64 32` で生成                           | NextAuth セッション暗号化キー     |
-| `FRONTEND_NEXTAUTH_URL`    | `https://nulab.uomi.site`                                 | NextAuth のベース URL            |
+| `FRONTEND_AUTH_URL`        | `https://nulab.uomi.site`                                 | Auth.js のベース URL              |
 | `FRONTEND_GEMINI_API_KEY`  | Gemini API キー                                            | LLM API 用                      |
 
 **設定方法:** GitHub リポジトリ → Settings → Secrets and variables → Actions → New repository secret
