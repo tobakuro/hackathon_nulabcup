@@ -71,16 +71,15 @@ jobs:
           echo "DB_PASSWORD=${DB_PASSWORD}" > raspi/.env
           chmod 600 raspi/.env
 
-      - name: podman の内部状態をリセット
-        run: podman system migrate || true
-
-      - name: 既存コンテナを停止
+      - name: podman をクリーンアップ
         working-directory: raspi
         run: |
+          podman system migrate || true
           podman compose down || true
-          # 旧プロジェクト名のコンテナや競合ポートを使うコンテナも停止
           podman ps -q | xargs -r podman stop || true
           podman ps -aq | xargs -r podman rm -f || true
+          # コンテナ削除後に再度 migrate で pause プロセスをリセット
+          podman system migrate || true
 
       - name: コンテナイメージをビルド
         working-directory: raspi
