@@ -53,6 +53,8 @@ export default async function SoloSetupPage({ searchParams }: SoloSetupPageProps
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
+              focusable="false"
               className="w-4 h-4"
             >
               <path d="m15 18-6-6 6-6" />

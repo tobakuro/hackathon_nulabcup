@@ -68,13 +68,15 @@ export default function SoloSettings({ loadedRepos, mode }: SoloSettingsProps) {
         return;
       }
 
+      const actualQuestionCount = generated.quizzes.length;
+
       const payload: QuizPayload = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         quizzes: generated.quizzes,
         repoFullName: repo.fullName,
         mode,
         difficulty,
-        questionCount,
+        questionCount: actualQuestionCount,
         createdAt: Date.now(),
       };
 

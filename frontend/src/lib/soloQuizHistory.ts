@@ -39,6 +39,28 @@ export interface QuizHistoryItem extends QuizPayload {
 const HISTORY_STORAGE_KEY = "solo_quiz_history";
 const HISTORY_MAX_ITEMS = 20;
 
+function isValidQuizQuestion(value: unknown): value is QuizQuestion {
+  if (typeof value !== "object" || value === null) return false;
+
+  const candidate = value as Partial<QuizQuestion>;
+  return (
+    typeof candidate.question === "string" &&
+    Array.isArray(candidate.options) &&
+    typeof candidate.answerIndex === "number"
+  );
+}
+
+function isValidQuizHistoryItem(value: unknown): value is QuizHistoryItem {
+  if (typeof value !== "object" || value === null) return false;
+
+  const candidate = value as Partial<QuizHistoryItem>;
+  return (
+    typeof candidate.id === "string" &&
+    Array.isArray(candidate.quizzes) &&
+    candidate.quizzes.every((quiz) => isValidQuizQuestion(quiz))
+  );
+}
+
 export function loadQuizHistory(): QuizHistoryItem[] {
   if (typeof window === "undefined") return [];
 
@@ -48,7 +70,7 @@ export function loadQuizHistory(): QuizHistoryItem[] {
   try {
     const parsed = JSON.parse(raw) as QuizHistoryItem[];
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item) => item && typeof item.id === "string");
+    return parsed.filter((item): item is QuizHistoryItem => isValidQuizHistoryItem(item));
   } catch {
     return [];
   }

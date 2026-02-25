@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { QuizQuestion, SoloMode } from "@/app/actions/quiz";
 import {
   applyIncorrectRetryResult,
   saveQuizHistoryResult,
@@ -10,10 +9,7 @@ import {
   type QuizPayload,
 } from "@/lib/soloQuizHistory";
 
-interface QuizClientPayload extends QuizPayload {
-  quizzes: QuizQuestion[];
-  mode: SoloMode;
-}
+interface QuizClientPayload extends QuizPayload {}
 
 function formatDifficultyLabel(value: QuizPayload["difficulty"]): string {
   if (value === "easy") return "かんたん";
@@ -24,10 +20,14 @@ function formatDifficultyLabel(value: QuizPayload["difficulty"]): string {
 export default function SoloQuizClient() {
   const [payload, setPayload] = useState<QuizClientPayload | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
+  const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(
+    null,
+  );
   const [showAnswer, setShowAnswer] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
-  const [questionResults, setQuestionResults] = useState<QuestionResultRecord[]>([]);
+  const [questionResults, setQuestionResults] = useState<
+    QuestionResultRecord[]
+  >([]);
   const [isResultSaved, setIsResultSaved] = useState(false);
 
   useEffect(() => {
@@ -35,7 +35,12 @@ export default function SoloQuizClient() {
     if (!raw) return;
     try {
       const parsed = JSON.parse(raw) as QuizClientPayload;
-      if (!parsed || !Array.isArray(parsed.quizzes) || parsed.quizzes.length === 0) return;
+      if (
+        !parsed ||
+        !Array.isArray(parsed.quizzes) ||
+        parsed.quizzes.length === 0
+      )
+        return;
       setPayload(parsed);
     } catch (error) {
       console.error(error);
@@ -44,7 +49,8 @@ export default function SoloQuizClient() {
 
   const quizzes = payload?.quizzes ?? [];
   const currentQuiz = quizzes[currentQuestionIndex];
-  const isFinished = quizzes.length > 0 && currentQuestionIndex >= quizzes.length;
+  const isFinished =
+    quizzes.length > 0 && currentQuestionIndex >= quizzes.length;
   const selectedDifficultyLabel = useMemo(
     () => (payload ? formatDifficultyLabel(payload.difficulty) : "-"),
     [payload],
@@ -81,7 +87,14 @@ export default function SoloQuizClient() {
 
     saveQuizHistoryResult(payload, result);
     setIsResultSaved(true);
-  }, [correctCount, isFinished, isResultSaved, payload, questionResults, quizzes.length]);
+  }, [
+    correctCount,
+    isFinished,
+    isResultSaved,
+    payload,
+    questionResults,
+    quizzes.length,
+  ]);
 
   function handleAnswerSelect(index: number) {
     if (showAnswer || !currentQuiz) return;
@@ -131,7 +144,9 @@ export default function SoloQuizClient() {
   if (isFinished) {
     return (
       <div className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-2xl shadow-lg border border-zinc-200 dark:border-zinc-800 p-6">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">クイズ終了</h2>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+          クイズ終了
+        </h2>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
           正解数: {correctCount} / {quizzes.length}
         </p>
@@ -158,7 +173,8 @@ export default function SoloQuizClient() {
           {payload.questionCount}
         </p>
         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-          問題 {currentQuestionIndex + 1} / {quizzes.length} ({currentQuiz.difficulty})
+          問題 {currentQuestionIndex + 1} / {quizzes.length} (
+          {currentQuiz.difficulty})
         </p>
         <p className="mt-3 text-sm font-semibold text-zinc-900 dark:text-white">
           {currentQuiz.question}
@@ -213,7 +229,9 @@ export default function SoloQuizClient() {
                 関連ファイル: {currentQuiz.relatedFile}
               </p>
               <div className="mt-3">
-                <p className="text-xs font-semibold text-zinc-900 dark:text-white">Tips（解説）</p>
+                <p className="text-xs font-semibold text-zinc-900 dark:text-white">
+                  Tips（解説）
+                </p>
                 <pre className="mt-2 whitespace-pre-wrap text-xs text-zinc-600 dark:text-zinc-300 font-sans">
                   {currentQuiz.tips}
                 </pre>
