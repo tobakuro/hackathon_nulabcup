@@ -72,9 +72,7 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
           <div className="flex flex-col items-center justify-center gap-4 py-12 border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-xl">
             <span className="text-4xl">🎮</span>
             <p className="text-zinc-500 dark:text-zinc-400 font-medium">ゲーム画面（準備中）</p>
-            <p className="text-xs text-zinc-400 dark:text-zinc-500">
-              プレイヤー: {user.name}
-            </p>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500">プレイヤー: {user.name}</p>
           </div>
         </div>
       </div>

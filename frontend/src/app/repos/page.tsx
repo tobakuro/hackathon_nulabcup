@@ -65,9 +65,7 @@ export default async function ReposPage() {
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
             📦 リポジトリ分析
           </h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            リポジトリを選んでAI解析を実行
-          </p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">リポジトリを選んでAI解析を実行</p>
         </div>
 
         {/* Main Card */}
@@ -75,7 +73,10 @@ export default async function ReposPage() {
           {/* User Info Bar */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              <span className="font-medium text-zinc-900 dark:text-white">{session.user?.name}</span> のリポジトリ
+              <span className="font-medium text-zinc-900 dark:text-white">
+                {session.user?.name}
+              </span>{" "}
+              のリポジトリ
             </p>
             <Link
               href="/lobby"
