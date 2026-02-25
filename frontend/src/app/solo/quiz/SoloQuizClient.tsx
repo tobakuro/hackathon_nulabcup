@@ -139,7 +139,10 @@ export default function SoloQuizClient() {
           対象: {payload.repoFullName}
         </p>
         <div className="mt-4 flex items-center gap-4">
-          <Link href={setupHref} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+          <Link
+            href={setupHref}
+            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+          >
             設定へ戻る
           </Link>
         </div>

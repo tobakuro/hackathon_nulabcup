@@ -62,7 +62,9 @@ export default async function SoloPage() {
               href="/solo/setup?mode=product"
               className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 hover:border-violet-400 dark:hover:border-violet-600 transition-colors"
             >
-              <p className="text-sm font-semibold text-zinc-900 dark:text-white">プロダクトモード</p>
+              <p className="text-sm font-semibold text-zinc-900 dark:text-white">
+                プロダクトモード
+              </p>
             </Link>
           </div>
         </div>

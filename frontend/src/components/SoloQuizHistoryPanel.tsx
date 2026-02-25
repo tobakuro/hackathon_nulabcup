@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -55,9 +55,13 @@ function renderQuestionList(
                 <p className="text-xs font-medium text-zinc-900 dark:text-white">
                   Q{record.questionIndex + 1}. {quiz.question}
                 </p>
-                <p className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300">あなたの解答: {selected}</p>
+                <p className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300">
+                  あなたの解答: {selected}
+                </p>
                 <p className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300">正解: {correct}</p>
-                <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">解説: {quiz.tips}</p>
+                <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                  解説: {quiz.tips}
+                </p>
               </article>
             );
           })}
@@ -154,7 +158,9 @@ export default function SoloQuizHistoryPanel() {
         <div>
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">クイズ履歴</h2>
           {selectedIds.length > 0 && (
-            <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">{selectedIds.length} 件を選択中</p>
+            <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+              {selectedIds.length} 件を選択中
+            </p>
           )}
         </div>
         {hasItems && (
@@ -188,7 +194,9 @@ export default function SoloQuizHistoryPanel() {
                 onClick={() => setShowAll((current) => !current)}
                 className="text-[11px] text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
               >
-                {showAll ? "表示を減らす" : `もっと見る（残り${Math.max(history.length - 5, 0)}件）`}
+                {showAll
+                  ? "表示を減らす"
+                  : `もっと見る（残り${Math.max(history.length - 5, 0)}件）`}
               </button>
             </div>
           )}
@@ -216,7 +224,9 @@ export default function SoloQuizHistoryPanel() {
                   </label>
 
                   <div className="mt-2 min-w-0">
-                    <p className="text-xs font-medium text-zinc-900 dark:text-white truncate">{item.repoFullName}</p>
+                    <p className="text-xs font-medium text-zinc-900 dark:text-white truncate">
+                      {item.repoFullName}
+                    </p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       <span className="rounded-full border border-zinc-300 px-2 py-0.5 text-[10px] text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
                         {item.mode === "tech" ? "テック" : "プロダクト"}
@@ -228,9 +238,13 @@ export default function SoloQuizHistoryPanel() {
                         {item.questionCount}問
                       </span>
                     </div>
-                    <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">作成: {formatDate(item.createdAt)}</p>
                     <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                      {item.result ? `結果: ${item.result.correctCount}/${item.result.totalCount}` : "結果: 未完了"}
+                      作成: {formatDate(item.createdAt)}
+                    </p>
+                    <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                      {item.result
+                        ? `結果: ${item.result.correctCount}/${item.result.totalCount}`
+                        : "結果: 未完了"}
                     </p>
                   </div>
 
@@ -252,10 +266,14 @@ export default function SoloQuizHistoryPanel() {
                 </div>
 
                 <details className="border-t border-zinc-200 dark:border-zinc-700">
-                  <summary className="cursor-pointer list-none p-3 text-[11px] text-blue-600 dark:text-blue-400">問題・解答・解説を見る</summary>
+                  <summary className="cursor-pointer list-none p-3 text-[11px] text-blue-600 dark:text-blue-400">
+                    問題・解答・解説を見る
+                  </summary>
                   <div className="px-3 pb-3 space-y-3 max-h-80 overflow-y-auto">
                     {!item.result ? (
-                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400">このクイズはまだ完了していません。</p>
+                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                        このクイズはまだ完了していません。
+                      </p>
                     ) : (
                       <>
                         {renderQuestionList(

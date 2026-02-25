@@ -4,11 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LoadedRepository } from "@/app/actions/github";
-import {
-  generateQuizBatchAction,
-  type SoloDifficulty,
-  type SoloMode,
-} from "@/app/actions/quiz";
+import { generateQuizBatchAction, type SoloDifficulty, type SoloMode } from "@/app/actions/quiz";
 import { appendQuizHistory, type QuizPayload } from "@/lib/soloQuizHistory";
 
 type Difficulty = "easy" | "normal" | "hard";
@@ -78,10 +74,7 @@ export default function SoloSettings({ loadedRepos, mode }: SoloSettingsProps) {
         createdAt: Date.now(),
       };
 
-      sessionStorage.setItem(
-        "solo_quiz_payload",
-        JSON.stringify(payload),
-      );
+      sessionStorage.setItem("solo_quiz_payload", JSON.stringify(payload));
       appendQuizHistory(payload);
       router.push("/solo/quiz");
     } catch (error) {
