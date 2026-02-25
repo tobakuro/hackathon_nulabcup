@@ -59,6 +59,8 @@ jobs:
             echo "必須 Secret が未設定です: ${missing[*]}" >&2
             exit 1
           fi
+          # systemd の EnvironmentFile が参照するパスに直接生成
+          mkdir -p "$HOME/workspace/hackathon_nulabcup/backend"
           {
             echo "SERVER_PORT=${SERVER_PORT:-8080}"
             echo "DB_HOST=${DB_HOST}"
@@ -70,8 +72,8 @@ jobs:
             echo "REDIS_ADDR=${REDIS_ADDR:-localhost:6379}"
             echo "REDIS_PASSWORD=${REDIS_PASSWORD}"
             echo "REDIS_DB=${REDIS_DB:-0}"
-          } > backend/.env
-          chmod 600 backend/.env
+          } > "$HOME/workspace/hackathon_nulabcup/backend/.env"
+          chmod 600 "$HOME/workspace/hackathon_nulabcup/backend/.env"
 
       - name: バックエンドをビルド
         # raspi はメモリが少ないため GOMAXPROCS=1 でビルド時の並列度を制限
@@ -116,14 +118,16 @@ jobs:
           FRONTEND_NEXTAUTH_SECRET: ${{ secrets.FRONTEND_NEXTAUTH_SECRET }}
           FRONTEND_GEMINI_API_KEY: ${{ secrets.FRONTEND_GEMINI_API_KEY }}
         run: |
+          # systemd の EnvironmentFile が参照するパスに直接生成
+          mkdir -p "$HOME/workspace/hackathon_nulabcup/frontend"
           {
             echo "GITHUB_ID=${FRONTEND_GITHUB_ID}"
             echo "GITHUB_SECRET=${FRONTEND_GITHUB_SECRET}"
             echo "AUTH_URL=${FRONTEND_AUTH_URL}"
             echo "NEXTAUTH_SECRET=${FRONTEND_NEXTAUTH_SECRET}"
             echo "GEMINI_API_KEY=${FRONTEND_GEMINI_API_KEY}"
-          } > frontend/.env
-          chmod 600 frontend/.env
+          } > "$HOME/workspace/hackathon_nulabcup/frontend/.env"
+          chmod 600 "$HOME/workspace/hackathon_nulabcup/frontend/.env"
 
       - name: 依存関係をインストール
         run: devbox run -- sh -c "cd frontend && npm ci --prefer-offline"
