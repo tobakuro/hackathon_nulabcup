@@ -12,6 +12,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+ENV USER=nextjs
 RUN NODE_OPTIONS='--max-old-space-size=512' npm run build
 
 # ---- runtime stage ----
