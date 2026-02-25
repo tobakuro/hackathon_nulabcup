@@ -54,7 +54,9 @@ function renderQuestionList(
                 <p className="text-xs font-medium text-zinc-900 dark:text-white">
                   Q{record.questionIndex + 1}. {quiz.question}
                 </p>
-                <p className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300">あなたの解答: {selected}</p>
+                <p className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300">
+                  あなたの解答: {selected}
+                </p>
                 <p className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300">正解: {correct}</p>
                 <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
                   解説: {quiz.tips}
@@ -161,8 +163,8 @@ export default function SoloQuizHistoryPanel() {
                       {item.repoFullName}
                     </p>
                     <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                      {formatDate(item.createdAt)} / 難易度: {formatDifficultyLabel(item.difficulty)} / 問題数:{" "}
-                      {item.questionCount}
+                      {formatDate(item.createdAt)} / 難易度:{" "}
+                      {formatDifficultyLabel(item.difficulty)} / 問題数: {item.questionCount}
                     </p>
                     <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
                       {item.result
