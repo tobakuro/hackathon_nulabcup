@@ -231,12 +231,8 @@ func (r *GameRoom) run(ctx context.Context) {
 				})
 				continue
 			}
-			r.players[msg.idx].questions = &QuestionSet{
-				MyQuestions: qs.MyQuestions,
-				ForOpponent: qs.ForOpponent,
-			}
-			questionsDone[msg.idx] = true
-			log.Printf("game room %s: player[%d] submitted questions", r.id, msg.idx)
+			allQs := append(qs.MyQuestions[:2:2], qs.ForOpponent[:2]...)
+			valid := true
 			for _, q := range allQs {
 				if err := q.Validate(); err != nil {
 					log.Printf("game room %s: player[%d] invalid question: %v", r.id, msg.idx, err)

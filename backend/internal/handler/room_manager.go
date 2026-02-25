@@ -24,12 +24,14 @@ type RoomManager struct {
 	userRepo repository.UserRepository
 	mu       sync.RWMutex
 }
+
 func NewRoomManager(userRepo repository.UserRepository) *RoomManager {
 	return &RoomManager{
 		rooms:    make(map[uuid.UUID]*GameRoom),
 		userRepo: userRepo,
 	}
 }
+
 // getOrCreate はルームを取得または新規作成する
 func (m *RoomManager) getOrCreate(roomID uuid.UUID) *GameRoom {
 	m.mu.Lock()
@@ -42,12 +44,14 @@ func (m *RoomManager) getOrCreate(roomID uuid.UUID) *GameRoom {
 	log.Printf("room manager: created room %s", roomID)
 	return room
 }
+
 // remove はルームをレジストリから削除する
 func (m *RoomManager) remove(roomID uuid.UUID) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.rooms, roomID)
 }
+
 // GetOrCreateUser は github_login でユーザーを取得し、存在しなければ作成して返す
 func (m *RoomManager) GetOrCreateUser(ctx context.Context, githubLogin string, githubIDStr string) (*entity.User, error) {
 	user, err := m.userRepo.GetByGitHubLogin(ctx, githubLogin)
