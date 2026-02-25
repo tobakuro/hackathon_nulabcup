@@ -2,12 +2,19 @@ import { auth, signOut } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { getLoadedRepositories } from "@/app/actions/github";
 
 export default async function HomePage() {
   const session = await auth();
 
   if (!session?.user) {
     redirect("/auth");
+  }
+
+  // 読み取り済みリポジトリがない場合はセットアップ画面へ
+  const loadedRepos = await getLoadedRepositories();
+  if (loadedRepos.length === 0) {
+    redirect("/setup");
   }
 
   return (
