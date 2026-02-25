@@ -87,15 +87,18 @@ type GameRoom struct {
 	id        uuid.UUID
 	mu        sync.Mutex
 	joined    int
+	onClose   func()     // ルーム終了時に一度だけ呼ばれるコールバック
+	closeOnce sync.Once
 }
 
-func newGameRoom(id uuid.UUID, userRepo repository.UserRepository) *GameRoom {
+func newGameRoom(id uuid.UUID, userRepo repository.UserRepository, onClose func()) *GameRoom {
 	return &GameRoom{
 		id:        id,
 		userRepo:  userRepo,
 		startCh:   make(chan struct{}),
 		msgCh:     make(chan playerMsg, 32),
 		disconnCh: make(chan int, 2),
+		onClose:   onClose,
 	}
 }
 
@@ -165,6 +168,7 @@ func (r *GameRoom) startReaderLoop(idx int) {
 
 // run はゲームループを実行する（goroutine で呼び出す）
 func (r *GameRoom) run(ctx context.Context) {
+	defer r.closeOnce.Do(r.onClose)
 	log.Printf("game room %s: waiting for both players", r.id)
 
 	// 両プレイヤーが揃うまで待つ

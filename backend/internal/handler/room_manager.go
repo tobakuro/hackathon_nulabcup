@@ -39,7 +39,10 @@ func (m *RoomManager) getOrCreate(roomID uuid.UUID) *GameRoom {
 	if room, ok := m.rooms[roomID]; ok {
 		return room
 	}
-	room := newGameRoom(roomID, m.userRepo)
+	room := newGameRoom(roomID, m.userRepo, func() {
+		m.remove(roomID)
+		log.Printf("room manager: removed room %s", roomID)
+	})
 	m.rooms[roomID] = room
 	log.Printf("room manager: created room %s", roomID)
 	return room
@@ -95,21 +98,6 @@ func (m *RoomManager) Join(
 		return -1, nil, nil, fmt.Errorf("join room %s: %w", roomID, err)
 	}
 	log.Printf("room manager: player[%d] %s joined room %s", idx, user.GitHubLogin, roomID)
-
-	// 2人目が参加した時点で、両プレイヤーの退室を監視してルームを削除する
-	if idx == 1 {
-		p0Done := room.players[0].doneCh
-		p1Done := room.players[1].doneCh
-		go func() {
-			var wg sync.WaitGroup
-			wg.Add(2)
-			go func() { <-p0Done; wg.Done() }()
-			go func() { <-p1Done; wg.Done() }()
-			wg.Wait()
-			m.remove(roomID)
-			log.Printf("room manager: removed room %s (all players disconnected)", roomID)
-		}()
-	}
 
 	return idx, doneCh, room, nil
 }
