@@ -3,19 +3,25 @@
 # raspi/setup.sh - Raspberry Pi 初回セットアップスクリプト
 #
 # 使い方（raspi 上で一度だけ実行）:
-#   bash ~/workspace/hackathon_nulabcup/raspi/setup.sh
+#   bash <このファイルへのパス>/raspi/setup.sh
 #
 # このスクリプトが行うこと:
 #   1. 必須ツール（devbox, git）の確認・インストール
 #   2. loginctl enable-linger でログアウト後もサービス継続
 #   3. /opt/backend/ ディレクトリの作成
-#   4. devbox パッケージのインストール（Node.js, Go 等）
+#   4. devbox パッケージのインストール（nix ストアのウォームアップ）
 #   5. systemd user サービスの登録（backend.service, frontend.service）
 #   6. GitHub Actions Runner の PATH 設定
+#
+# 注意:
+#   セットアップ後のリポジトリ管理は GitHub Actions Runner が担います。
+#   CI が actions-runner/_work/hackathon_nulabcup/ を自動的にチェックアウトします。
 # ==============================================================================
 set -euo pipefail
 
-REPO_DIR="${HOME}/workspace/hackathon_nulabcup"
+# このスクリプト自身の場所を基準にパスを解決する（固定パス不要）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(dirname "${SCRIPT_DIR}")"  # raspi/ の親 = リポジトリルート
 SYSTEMD_USER_DIR="${HOME}/.config/systemd/user"
 
 log()  { echo "[setup] $*"; }
@@ -65,40 +71,25 @@ else
 fi
 
 # ============================================================
-# 4. リポジトリのクローン（なければ）
+# 4. devbox パッケージのインストール（nix ストアのウォームアップ）
 # ============================================================
-log "=== Step 4: リポジトリの確認 ==="
-if [ ! -d "${REPO_DIR}/.git" ]; then
-  log "リポジトリをクローンします..."
-  mkdir -p "$(dirname "${REPO_DIR}")"
-  git clone https://github.com/tobakuro/hackathon_nulabcup.git "${REPO_DIR}"
-else
-  log "リポジトリはすでに存在します: ${REPO_DIR}"
-fi
-
-# ============================================================
-# 5. devbox パッケージのインストール
-# ============================================================
-log "=== Step 5: devbox パッケージのインストール ==="
+log "=== Step 4: devbox パッケージのインストール ==="
 log "（初回は時間がかかります...）"
 cd "${REPO_DIR}"
 devbox install
 log "devbox パッケージ: インストール完了"
+log "（CI 実行時は actions-runner/_work/ 配下で自動的にセットアップされます）"
 
 # ============================================================
-# 6. systemd user サービスの登録
+# 5. systemd user サービスの登録
 # ============================================================
-log "=== Step 6: systemd user サービスの登録 ==="
+log "=== Step 5: systemd user サービスの登録 ==="
 mkdir -p "${SYSTEMD_USER_DIR}"
 
-# backend.service をコピー
-cp "${REPO_DIR}/raspi/backend.service" "${SYSTEMD_USER_DIR}/backend.service"
+cp "${SCRIPT_DIR}/backend.service" "${SYSTEMD_USER_DIR}/backend.service"
 log "backend.service をコピーしました"
 
-# frontend.service をコピー
-# Note: ExecStart の node パスは devbox の .devbox/nix/profile/default/bin/node を参照する
-#       このパスは devbox install 実行後に存在するシンボリックリンク
-cp "${REPO_DIR}/raspi/frontend.service" "${SYSTEMD_USER_DIR}/frontend.service"
+cp "${SCRIPT_DIR}/frontend.service" "${SYSTEMD_USER_DIR}/frontend.service"
 log "frontend.service をコピーしました"
 
 # systemd にサービスを認識させる
@@ -108,9 +99,9 @@ systemctl --user enable frontend.service
 log "サービスを有効化しました"
 
 # ============================================================
-# 7. GitHub Actions Runner の PATH 設定
+# 6. GitHub Actions Runner の PATH 設定
 # ============================================================
-log "=== Step 7: GitHub Actions Runner の PATH 設定 ==="
+log "=== Step 6: GitHub Actions Runner の PATH 設定 ==="
 RUNNER_ENV_FILE="${HOME}/actions-runner/.env"
 if [ -d "${HOME}/actions-runner" ]; then
   # devbox の PATH を runner 環境に追加
@@ -148,6 +139,7 @@ log "3. Runner をサービスとして登録:"
 log "   cd ~/actions-runner && sudo ./svc.sh install && sudo ./svc.sh start"
 log ""
 log "4. main ブランチに push すると CD が動作します"
+log "   （リポジトリは actions-runner/_work/ に自動チェックアウトされます）"
 log ""
 log "5. サービス状態の確認:"
 log "   systemctl --user status backend.service frontend.service"
