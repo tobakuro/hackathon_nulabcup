@@ -61,7 +61,8 @@ func main() {
 
 	userHandler := handler.NewUserHandler(userUsecase)
 	matchmakeHandler := handler.NewMatchmakeHandler(hub, userRepo)
-	roomHandler := handler.NewRoomHandler()
+	roomManager := handler.NewRoomManager(userRepo)
+	roomHandler := handler.NewRoomHandler(roomManager)
 
 	var devHandler *handler.DevHandler
 	if os.Getenv("ENV") == "development" {
