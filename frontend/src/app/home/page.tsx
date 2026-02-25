@@ -128,6 +128,34 @@ export default async function HomePage() {
             </svg>
           </Link>
 
+          {/* Code GeoGuessr */}
+          <Link
+            href="/code-quiz"
+            className="group w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-lg hover:border-sky-300 dark:hover:border-sky-700 transition-all duration-200 p-5 flex items-center gap-4"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br from-sky-500 to-blue-600 shadow-md shadow-sky-500/20 group-hover:scale-105 transition-transform duration-200 shrink-0">
+              <span className="text-xl">🗺️</span>
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-zinc-900 dark:text-white">Code GeoGuessr</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                コードの1行からファイルを当てるクイズ
+              </p>
+            </div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-5 h-5 ml-auto text-zinc-300 dark:text-zinc-600 group-hover:text-sky-500 group-hover:translate-x-0.5 transition-all duration-200 shrink-0"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </Link>
+
           {/* リポジトリ管理 */}
           <Link
             href="/repos"

@@ -37,7 +37,9 @@ export default async function SoloQuizPage() {
             </svg>
             設定に戻る
           </Link>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">1人プレイ</h1>
+          <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">
+            1人プレイ
+          </h1>
           <div className="w-16" />
         </div>
 

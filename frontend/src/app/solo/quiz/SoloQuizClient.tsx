@@ -45,7 +45,9 @@ export default function SoloQuizClient() {
     [payload],
   );
   const isCurrentAnswerCorrect =
-    !!currentQuiz && selectedAnswerIndex !== null && selectedAnswerIndex === currentQuiz.answerIndex;
+    !!currentQuiz &&
+    selectedAnswerIndex !== null &&
+    selectedAnswerIndex === currentQuiz.answerIndex;
 
   function handleAnswerSelect(index: number) {
     if (showAnswer || !currentQuiz) return;
@@ -70,7 +72,9 @@ export default function SoloQuizClient() {
   if (!payload) {
     return (
       <div className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-2xl shadow-lg border border-zinc-200 dark:border-zinc-800 p-6">
-        <p className="text-sm text-zinc-600 dark:text-zinc-300">クイズデータが見つかりませんでした。</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-300">
+          クイズデータが見つかりませんでした。
+        </p>
         <Link
           href="/solo"
           className="inline-block mt-4 text-xs text-blue-600 dark:text-blue-400 hover:underline"
@@ -88,7 +92,9 @@ export default function SoloQuizClient() {
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
           正解数: {correctCount} / {quizzes.length}
         </p>
-        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">対象: {payload.repoFullName}</p>
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          対象: {payload.repoFullName}
+        </p>
         <div className="mt-4 flex items-center gap-4">
           <Link href="/solo" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
             設定へ戻る
@@ -102,12 +108,15 @@ export default function SoloQuizClient() {
     <div className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-2xl shadow-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
       <div className="p-6 border-b border-zinc-100 dark:border-zinc-800">
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          {payload.repoFullName} / 難易度: {selectedDifficultyLabel} / 問題数: {payload.questionCount}
+          {payload.repoFullName} / 難易度: {selectedDifficultyLabel} / 問題数:{" "}
+          {payload.questionCount}
         </p>
         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
           問題 {currentQuestionIndex + 1} / {quizzes.length} ({currentQuiz.difficulty})
         </p>
-        <p className="mt-3 text-sm font-semibold text-zinc-900 dark:text-white">{currentQuiz.question}</p>
+        <p className="mt-3 text-sm font-semibold text-zinc-900 dark:text-white">
+          {currentQuiz.question}
+        </p>
       </div>
 
       <div className="p-6">

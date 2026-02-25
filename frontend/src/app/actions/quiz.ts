@@ -52,6 +52,8 @@ export interface QuizBatch {
   quizzes: QuizQuestion[];
 }
 
+import { isQuizCandidatePath } from "@/lib/quiz-utils";
+
 export type SoloDifficulty = "easy" | "normal" | "hard";
 
 export interface QuizGenerationOptions {
@@ -59,10 +61,7 @@ export interface QuizGenerationOptions {
   questionCount?: number;
 }
 
-const SOLO_DIFFICULTY_TO_LEVEL: Record<
-  SoloDifficulty,
-  QuizQuestion["difficulty"]
-> = {
+const SOLO_DIFFICULTY_TO_LEVEL: Record<SoloDifficulty, QuizQuestion["difficulty"]> = {
   easy: "Lv1",
   normal: "Lv2",
   hard: "Lv3",
@@ -74,9 +73,7 @@ function normalizeQuestionCount(count: number | undefined): number {
   return Math.min(Math.max(normalized, 1), 30);
 }
 
-function buildConstraintPrompt(
-  options: QuizGenerationOptions | undefined,
-): string {
+function buildConstraintPrompt(options: QuizGenerationOptions | undefined): string {
   const questionCount = normalizeQuestionCount(options?.questionCount);
   const requestedLevel = options?.difficulty
     ? SOLO_DIFFICULTY_TO_LEVEL[options.difficulty]
@@ -108,32 +105,13 @@ function applyQuizConstraints(
   return { quizzes: quizzes.slice(0, questionCount) };
 }
 
-function isQuizCandidatePath(path: string): boolean {
-  const lower = path.toLowerCase();
-  if (lower.endsWith("readme.md")) return false;
-  if (lower.includes("/docs/") || lower.startsWith("docs/")) return false;
-  return (
-    lower.endsWith(".ts") ||
-    lower.endsWith(".tsx") ||
-    lower.endsWith(".js") ||
-    lower.endsWith(".jsx") ||
-    lower.endsWith(".go") ||
-    lower.endsWith(".py") ||
-    lower.endsWith(".php") ||
-    lower.endsWith(".dart") ||
-    lower.endsWith(".cs") ||
-    lower.endsWith(".rb")
-  );
-}
-
 async function fetchAndCombineCodeFromDb(
   owner: string,
   repo: string,
   targetFiles: string[],
 ): Promise<string> {
   const candidateTargetFiles = targetFiles.filter(isQuizCandidatePath);
-  const filesToRead =
-    candidateTargetFiles.length > 0 ? candidateTargetFiles : targetFiles;
+  const filesToRead = candidateTargetFiles.length > 0 ? candidateTargetFiles : targetFiles;
 
   const fullName = `${owner}/${repo}`;
   const [repository] = await db
@@ -169,9 +147,7 @@ async function fetchAndCombineCodeFromDb(
   let combinedText = "";
 
   if (filesToRead.length > 0) {
-    const contentByPath = new Map(
-      rows.map((row) => [row.filePath, row.content]),
-    );
+    const contentByPath = new Map(rows.map((row) => [row.filePath, row.content]));
     for (const path of filesToRead) {
       const content = contentByPath.get(path);
       if (!content) continue;
@@ -194,11 +170,7 @@ export async function generateQuizBatchAction(
   options?: QuizGenerationOptions,
 ): Promise<QuizBatch | null> {
   void accessToken;
-  const combinedCode = await fetchAndCombineCodeFromDb(
-    owner,
-    repo,
-    targetFiles,
-  );
+  const combinedCode = await fetchAndCombineCodeFromDb(owner, repo, targetFiles);
   if (!combinedCode) return null;
 
   const apiKey = process.env.GEMINI_API_KEY;

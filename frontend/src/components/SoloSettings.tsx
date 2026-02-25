@@ -42,7 +42,9 @@ export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
 
     const targetFiles = repo.summaryJson?.analyzedFiles ?? [];
     if (targetFiles.length === 0) {
-      setGenerationError("解析済みファイルが見つかりません。先にリポジトリ解析を実行してください。");
+      setGenerationError(
+        "解析済みファイルが見つかりません。先にリポジトリ解析を実行してください。",
+      );
       return;
     }
 
