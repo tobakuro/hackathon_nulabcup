@@ -947,9 +947,10 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
                     {gameEnd.your_correct_count}
                     <span className="text-base font-normal text-zinc-400 dark:text-zinc-500">
                       {" "}
-                      / {gameEnd.your_correct_count + (gameEnd.opponent_correct_count ?? 0) > 0
-                          ? turnHistory.length || 4
-                          : 4}
+                      /{" "}
+                      {gameEnd.your_correct_count + (gameEnd.opponent_correct_count ?? 0) > 0
+                        ? turnHistory.length || 4
+                        : 4}
                     </span>
                   </p>
                 </div>
