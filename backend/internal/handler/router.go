@@ -31,7 +31,7 @@ func NewRouter(
 
 	// REST API
 	api := e.Group("/api/v1")
-	api.GET("/users/me", userHandler.GetMe)
+	api.GET("/users/me", userHandler.GetMe, GitHubAuthMiddleware)
 
 	// WebSocket
 	ws := e.Group("/ws")
