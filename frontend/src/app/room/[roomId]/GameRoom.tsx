@@ -56,7 +56,7 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
           <div>
             <h1 className="text-lg font-bold text-zinc-900 dark:text-white">🏟️ ゲームルーム</h1>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-0.5">
-              ID: {roomId.slice(0, 8)}...
+              ID: {roomId.length > 8 ? `${roomId.slice(0, 8)}...` : roomId}
             </p>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800">
