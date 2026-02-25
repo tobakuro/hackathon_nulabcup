@@ -61,9 +61,7 @@
         "repositories_full_name_unique": {
           "name": "repositories_full_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "full_name"
-          ]
+          "columns": ["full_name"]
         }
       },
       "policies": {},
@@ -129,12 +127,8 @@
           "name": "repository_files_repository_id_repositories_id_fk",
           "tableFrom": "repository_files",
           "tableTo": "repositories",
-          "columnsFrom": [
-            "repository_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["repository_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -208,9 +202,7 @@
         "users_github_id_unique": {
           "name": "users_github_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "github_id"
-          ]
+          "columns": ["github_id"]
         }
       },
       "policies": {},
