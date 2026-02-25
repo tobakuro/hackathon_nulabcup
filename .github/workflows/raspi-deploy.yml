@@ -71,6 +71,9 @@ jobs:
           echo "DB_PASSWORD=${DB_PASSWORD}" > raspi/.env
           chmod 600 raspi/.env
 
+      - name: podman の内部状態をリセット
+        run: podman system migrate || true
+
       - name: 既存コンテナを停止
         working-directory: raspi
         run: podman compose down || true
