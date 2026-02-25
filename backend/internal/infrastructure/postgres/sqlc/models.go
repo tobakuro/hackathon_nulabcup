@@ -8,7 +8,26 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
+
+type Repository struct {
+	ID          uuid.UUID             `json:"id"`
+	Owner       string                `json:"owner"`
+	Name        string                `json:"name"`
+	FullName    string                `json:"full_name"`
+	SummaryJson pqtype.NullRawMessage `json:"summary_json"`
+	CreatedAt   time.Time             `json:"created_at"`
+	UpdatedAt   time.Time             `json:"updated_at"`
+}
+
+type RepositoryFile struct {
+	ID           uuid.UUID `json:"id"`
+	RepositoryID uuid.UUID `json:"repository_id"`
+	FilePath     string    `json:"file_path"`
+	Content      string    `json:"content"`
+	CreatedAt    time.Time `json:"created_at"`
+}
 
 type Room struct {
 	ID        uuid.UUID `json:"id"`
