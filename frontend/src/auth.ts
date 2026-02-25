@@ -1,5 +1,7 @@
 import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
+import { db } from "./db";
+import { users } from "./db/schema";
 
 // ビルド時にはダミー値を使用、実行時には実際の値が必要
 const GITHUB_ID = process.env.GITHUB_ID || "dummy-id";
@@ -29,6 +31,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
+    async signIn({ profile }) {
+      // 初回ログイン時にusersテーブルにユーザー情報を作成（既存なら更新）
+      if (profile) {
+        try {
+          const githubId = (profile as Record<string, unknown>).id as number;
+          const githubLogin = (profile as Record<string, unknown>).login as string;
+
+          await db
+            .insert(users)
+            .values({
+              githubId,
+              githubLogin,
+            })
+            .onConflictDoUpdate({
+              target: users.githubId,
+              set: {
+                githubLogin,
+                updatedAt: new Date(),
+              },
+            });
+        } catch (error) {
+          console.warn("Failed to upsert user to DB:", error);
+          // DB接続エラーでもログイン自体は許可する
+        }
+      }
+      return true;
+    },
     jwt({ token, user, profile, account }) {
       if (user) {
         token.github_id = (user as Record<string, unknown>).github_id;

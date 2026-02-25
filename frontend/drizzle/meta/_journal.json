@@ -8,6 +8,13 @@
       "when": 1771872716521,
       "tag": "0000_small_maddog",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1772001848852,
+      "tag": "0001_strong_bloodaxe",
+      "breakpoints": true
     }
   ]
 }
