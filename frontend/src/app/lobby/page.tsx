@@ -9,13 +9,13 @@ interface UserStats {
   rate: number;
 }
 
-async function fetchUserStats(githubLogin: string): Promise<UserStats | null> {
+async function fetchUserStats(accessToken: string): Promise<UserStats | null> {
   try {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-    const res = await fetch(
-      `${apiBase}/api/v1/users/me?github_login=${encodeURIComponent(githubLogin)}`,
-      { cache: "no-store" },
-    );
+    const res = await fetch(`${apiBase}/api/v1/users/me`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     if (!res.ok) return null;
     return res.json();
   } catch {
@@ -30,9 +30,7 @@ export default async function LobbyPage() {
     redirect("/auth");
   }
 
-  const githubLogin =
-    ((session.user as unknown as Record<string, unknown>).github_login as string) || "";
-  const stats = githubLogin ? await fetchUserStats(githubLogin) : null;
+  const stats = session.accessToken ? await fetchUserStats(session.accessToken) : null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black overflow-hidden relative">
