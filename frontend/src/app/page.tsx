@@ -74,7 +74,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="absolute bottom-6 text-xs text-zinc-400 dark:text-zinc-600">
-        © 2026 NuLab Cup — GitHub Quiz Game
+        © 2026 Jyogi — GitHub Quiz Game
       </footer>
     </div>
   );
