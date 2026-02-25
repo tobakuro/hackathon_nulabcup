@@ -113,6 +113,7 @@ jobs:
           FRONTEND_AUTH_URL: ${{ secrets.FRONTEND_AUTH_URL }}
           FRONTEND_NEXTAUTH_SECRET: ${{ secrets.FRONTEND_NEXTAUTH_SECRET }}
           FRONTEND_GEMINI_API_KEY: ${{ secrets.FRONTEND_GEMINI_API_KEY }}
+          FRONTEND_DATABASE_URL: ${{ secrets.FRONTEND_DATABASE_URL }}
         run: |
           {
             echo "GITHUB_ID=${FRONTEND_GITHUB_ID}"
@@ -120,6 +121,7 @@ jobs:
             echo "AUTH_URL=${FRONTEND_AUTH_URL}"
             echo "NEXTAUTH_SECRET=${FRONTEND_NEXTAUTH_SECRET}"
             echo "GEMINI_API_KEY=${FRONTEND_GEMINI_API_KEY}"
+            echo "DATABASE_URL=${FRONTEND_DATABASE_URL}"
           } > frontend/.env
           chmod 600 frontend/.env
 
