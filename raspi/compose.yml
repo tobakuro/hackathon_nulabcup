@@ -8,8 +8,6 @@ services:
       POSTGRES_DB: hackathon
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "127.0.0.1:5432:5432"
     networks:
       - app-network
 
@@ -19,8 +17,6 @@ services:
     command: redis-server --save 60 1 --loglevel warning
     volumes:
       - redis_data:/data
-    ports:
-      - "127.0.0.1:6379:6379"
     networks:
       - app-network
 
