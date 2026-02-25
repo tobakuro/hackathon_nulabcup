@@ -185,7 +185,10 @@ export default function RepoManager({
                   <div
                     className="flex items-center justify-between p-4 cursor-pointer select-none"
                     onClick={() => setExpandedId(isExpanded ? null : repo.id)}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setExpandedId(isExpanded ? null : repo.id); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ")
+                        setExpandedId(isExpanded ? null : repo.id);
+                    }}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 shrink-0">

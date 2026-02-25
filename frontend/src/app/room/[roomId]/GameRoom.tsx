@@ -84,9 +84,21 @@ type GamePhase =
 // ── 定数 ──────────────────────────────────────────────────
 
 const DIFFICULTY_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-  easy:   { label: "Easy",   color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-100 dark:bg-emerald-900/30" },
-  normal: { label: "Normal", color: "text-blue-600 dark:text-blue-400",       bg: "bg-blue-100 dark:bg-blue-900/30" },
-  hard:   { label: "Hard",   color: "text-rose-600 dark:text-rose-400",       bg: "bg-rose-100 dark:bg-rose-900/30" },
+  easy: {
+    label: "Easy",
+    color: "text-emerald-600 dark:text-emerald-400",
+    bg: "bg-emerald-100 dark:bg-emerald-900/30",
+  },
+  normal: {
+    label: "Normal",
+    color: "text-blue-600 dark:text-blue-400",
+    bg: "bg-blue-100 dark:bg-blue-900/30",
+  },
+  hard: {
+    label: "Hard",
+    color: "text-rose-600 dark:text-rose-400",
+    bg: "bg-rose-100 dark:bg-rose-900/30",
+  },
 };
 
 // Bot対戦時に使う固定ダミー問題（bot_player.go と対応）
@@ -95,15 +107,25 @@ const BOT_DUMMY_QUESTIONS: BackendQuestion[] = [
     difficulty: "easy",
     question_text: "Next.js で「use client」ディレクティブを先頭に書く目的は？",
     correct_answer: "クライアントコンポーネントとして動作させるため",
-    tips: "App Router では、デフォルトがサーバーコンポーネント。\"use client\" を書くとブラウザ上で実行される React コンポーネントになります。",
-    choices: ["クライアントコンポーネントとして動作させるため", "SSR を無効化するため", "TypeScript を有効にするため", "環境変数を読み込むため"],
+    tips: 'App Router では、デフォルトがサーバーコンポーネント。"use client" を書くとブラウザ上で実行される React コンポーネントになります。',
+    choices: [
+      "クライアントコンポーネントとして動作させるため",
+      "SSR を無効化するため",
+      "TypeScript を有効にするため",
+      "環境変数を読み込むため",
+    ],
   },
   {
     difficulty: "hard",
     question_text: "Go の goroutine でデータ競合を防ぐ最も推奨された方法はどれ？",
     correct_answer: "channel を使ってデータをやり取りする",
-    tips: "\"Do not communicate by sharing memory; instead, share memory by communicating.\" channel は Go の並行処理の中心的な仕組みです。",
-    choices: ["channel を使ってデータをやり取りする", "グローバル変数にする", "sync.Mutex だけを使う", "goroutine を1つに制限する"],
+    tips: '"Do not communicate by sharing memory; instead, share memory by communicating." channel は Go の並行処理の中心的な仕組みです。',
+    choices: [
+      "channel を使ってデータをやり取りする",
+      "グローバル変数にする",
+      "sync.Mutex だけを使う",
+      "goroutine を1つに制限する",
+    ],
   },
   {
     difficulty: "easy",
@@ -360,7 +382,10 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
     (choiceIndex: number) => {
       if (answered) return;
       const timeMs = Date.now() - turnStartTimeRef.current;
-      sendMessage({ type: "act_submit_answer", payload: { choice_index: choiceIndex, time_ms: timeMs } });
+      sendMessage({
+        type: "act_submit_answer",
+        payload: { choice_index: choiceIndex, time_ms: timeMs },
+      });
       setSelectedChoice(choiceIndex);
       setAnswered(true);
       stopTimer();
@@ -381,15 +406,15 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
           throw new Error("問題を4問以上生成できませんでした");
         }
         // 難易度順にソートして my_questions (Lv1+Lv3) / for_opponent (Lv1+Lv2) を構成
-        const easy  = batch.quizzes.filter((q) => q.difficulty === "Lv1");
+        const easy = batch.quizzes.filter((q) => q.difficulty === "Lv1");
         const normal = batch.quizzes.filter((q) => q.difficulty === "Lv2");
-        const hard  = batch.quizzes.filter((q) => q.difficulty === "Lv3");
+        const hard = batch.quizzes.filter((q) => q.difficulty === "Lv3");
         // フォールバック: 不足難易度は他から補充
         const pick = (arr: QuizQuestion[], fallback: QuizQuestion[]): QuizQuestion =>
           (arr.length > 0 ? arr : fallback)[0];
         const all = batch.quizzes;
-        const myQ0  = pick(easy, all);
-        const myQ1  = pick(hard, all.slice(1));
+        const myQ0 = pick(easy, all);
+        const myQ1 = pick(hard, all.slice(1));
         const forOp0 = pick(easy.slice(1), all);
         const forOp1 = pick(normal, all.slice(2));
         sendMessage({
@@ -411,10 +436,13 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
 
   // ── レンダリング ────────────────────────────────────────
 
-  const difficultyInfo =
-    currentTurn
-      ? DIFFICULTY_LABEL[currentTurn.difficulty] ?? { label: currentTurn.difficulty, color: "text-zinc-600", bg: "bg-zinc-100" }
-      : null;
+  const difficultyInfo = currentTurn
+    ? (DIFFICULTY_LABEL[currentTurn.difficulty] ?? {
+        label: currentTurn.difficulty,
+        color: "text-zinc-600",
+        bg: "bg-zinc-100",
+      })
+    : null;
 
   // タイマーのプログレス幅
   const timerPct = currentTurn ? (timeLeft / currentTurn.time_limit_sec) * 100 : 100;
@@ -423,7 +451,6 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
 
   return (
     <div className="flex flex-col gap-4 w-full">
-
       {/* ── ヘッダー ── */}
       <div className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-2xl shadow-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
         <div className="px-5 py-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between gap-3">
@@ -438,7 +465,9 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
           {/* GNU バランス */}
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
             <span className="text-sm">🦬</span>
-            <span className="text-sm font-bold text-amber-700 dark:text-amber-400">{myGnu.toLocaleString()} GNU</span>
+            <span className="text-sm font-bold text-amber-700 dark:text-amber-400">
+              {myGnu.toLocaleString()} GNU
+            </span>
           </div>
         </div>
 
@@ -475,8 +504,8 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
                     i < currentTurn.turn - 1
                       ? "bg-blue-500"
                       : i === currentTurn.turn - 1
-                      ? "bg-blue-300"
-                      : "bg-zinc-200 dark:bg-zinc-700"
+                        ? "bg-blue-300"
+                        : "bg-zinc-200 dark:bg-zinc-700"
                   }`}
                 />
               ))}
@@ -487,7 +516,6 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
 
       {/* ── メインエリア ── */}
       <div className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-2xl shadow-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-
         {/* 接続中 */}
         {phase === "connecting" && (
           <div className="p-10 flex flex-col items-center gap-4">
@@ -500,7 +528,9 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
         {phase === "preparing_questions" && (
           <div className="flex flex-col gap-4 p-5">
             <div className="text-center">
-              <p className="font-bold text-zinc-900 dark:text-white text-lg">問題を準備してください</p>
+              <p className="font-bold text-zinc-900 dark:text-white text-lg">
+                問題を準備してください
+              </p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                 リポジトリを選択すると、AIが自動で問題を生成して相手に出題します
               </p>
@@ -510,7 +540,9 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-zinc-500 dark:text-zinc-400">残り時間</span>
-                <span className={`font-bold tabular-nums ${prepTimeLeft <= 15 ? "text-rose-500 animate-pulse" : prepTimeLeft <= 30 ? "text-amber-500" : "text-zinc-700 dark:text-zinc-300"}`}>
+                <span
+                  className={`font-bold tabular-nums ${prepTimeLeft <= 15 ? "text-rose-500 animate-pulse" : prepTimeLeft <= 30 ? "text-amber-500" : "text-zinc-700 dark:text-zinc-300"}`}
+                >
                   {prepTimeLeft}秒
                 </span>
               </div>
@@ -545,7 +577,9 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
                 {repos.length === 0 ? (
                   <div className="py-8 text-center text-sm text-zinc-400 dark:text-zinc-500">
                     <p>登録済みリポジトリがありません</p>
-                    <p className="text-xs mt-1">先に「リポジトリ管理」でリポジトリを読み込んでください</p>
+                    <p className="text-xs mt-1">
+                      先に「リポジトリ管理」でリポジトリを読み込んでください
+                    </p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2 max-h-72 overflow-y-auto">
@@ -603,7 +637,9 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
               ターン {currentTurn.turn}
             </p>
             {difficultyInfo && (
-              <span className={`px-3 py-1 rounded-full text-sm font-semibold ${difficultyInfo.bg} ${difficultyInfo.color}`}>
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-semibold ${difficultyInfo.bg} ${difficultyInfo.color}`}
+              >
                 {difficultyInfo.label}
               </span>
             )}
@@ -617,7 +653,9 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
             <div className="px-5 pt-4">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs text-zinc-500 dark:text-zinc-400">残り時間</span>
-                <span className={`text-sm font-bold tabular-nums ${timeLeft <= 5 ? "text-rose-500 animate-pulse" : "text-zinc-700 dark:text-zinc-300"}`}>
+                <span
+                  className={`text-sm font-bold tabular-nums ${timeLeft <= 5 ? "text-rose-500 animate-pulse" : "text-zinc-700 dark:text-zinc-300"}`}
+                >
                   {timeLeft}秒
                 </span>
               </div>
@@ -632,7 +670,9 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
             {/* 難易度バッジ */}
             {difficultyInfo && (
               <div className="px-5 pt-3 flex items-center gap-2">
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${difficultyInfo.bg} ${difficultyInfo.color}`}>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${difficultyInfo.bg} ${difficultyInfo.color}`}
+                >
                   {difficultyInfo.label}
                 </span>
                 <span className="text-xs text-zinc-400 dark:text-zinc-500">
@@ -651,8 +691,12 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
             {/* ベットセクション */}
             <div className="mx-5 my-3 p-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">🦬 ヌーを賭ける</span>
-                <span className={`text-xs font-bold ${betConfirmed ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  🦬 ヌーを賭ける
+                </span>
+                <span
+                  className={`text-xs font-bold ${betConfirmed ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}
+                >
                   {betConfirmed ? "✓ 確定" : "未確定"}
                 </span>
               </div>
@@ -671,7 +715,9 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
                   disabled={answered}
                   className="flex-1 accent-amber-500 disabled:opacity-50"
                 />
-                <span className="text-xs text-zinc-500 dark:text-zinc-400 shrink-0">{currentTurn.max_bet}</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 shrink-0">
+                  {currentTurn.max_bet}
+                </span>
               </div>
               <div className="flex items-center justify-between mt-1.5">
                 <span className="text-sm font-bold text-amber-700 dark:text-amber-400">
@@ -701,8 +747,8 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
                       answered && selectedChoice === i
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 scale-[0.98]"
                         : answered
-                        ? "border-zinc-200 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-60"
-                        : "border-zinc-200 dark:border-zinc-700 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:scale-[1.01] text-zinc-900 dark:text-white cursor-pointer"
+                          ? "border-zinc-200 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-60"
+                          : "border-zinc-200 dark:border-zinc-700 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:scale-[1.01] text-zinc-900 dark:text-white cursor-pointer"
                     }`}
                 >
                   <span className="inline-flex items-center gap-2">
@@ -729,29 +775,34 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
         {phase === "turn_result" && turnResult && currentTurn && (
           <div className="flex flex-col">
             {/* 結果バナー */}
-            <div className={`px-5 py-6 flex flex-col items-center gap-2 ${
-              turnResult.is_correct
-                ? "bg-emerald-50 dark:bg-emerald-900/20"
-                : "bg-rose-50 dark:bg-rose-900/20"
-            }`}>
-              <div className="text-4xl">
-                {turnResult.is_correct ? "✅" : "❌"}
-              </div>
-              <p className={`text-xl font-bold ${
+            <div
+              className={`px-5 py-6 flex flex-col items-center gap-2 ${
                 turnResult.is_correct
-                  ? "text-emerald-700 dark:text-emerald-400"
-                  : "text-rose-700 dark:text-rose-400"
-              }`}>
+                  ? "bg-emerald-50 dark:bg-emerald-900/20"
+                  : "bg-rose-50 dark:bg-rose-900/20"
+              }`}
+            >
+              <div className="text-4xl">{turnResult.is_correct ? "✅" : "❌"}</div>
+              <p
+                className={`text-xl font-bold ${
+                  turnResult.is_correct
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : "text-rose-700 dark:text-rose-400"
+                }`}
+              >
                 {turnResult.is_correct ? "正解！" : "不正解"}
               </p>
-              <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-sm ${
-                turnResult.gnu_delta >= 0
-                  ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400"
-                  : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-400"
-              }`}>
+              <div
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-sm ${
+                  turnResult.gnu_delta >= 0
+                    ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400"
+                    : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-400"
+                }`}
+              >
                 <span>🦬</span>
                 <span>
-                  {turnResult.gnu_delta >= 0 ? "+" : ""}{turnResult.gnu_delta.toLocaleString()} GNU
+                  {turnResult.gnu_delta >= 0 ? "+" : ""}
+                  {turnResult.gnu_delta.toLocaleString()} GNU
                 </span>
               </div>
             </div>
@@ -769,15 +820,21 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
                 <div className="flex-1 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 text-center">
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">あなた</p>
                   <p className="text-2xl mt-1">{turnResult.is_correct ? "✅" : "❌"}</p>
-                  <p className={`text-xs font-bold mt-1 ${turnResult.gnu_delta >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
-                    {turnResult.gnu_delta >= 0 ? "+" : ""}{turnResult.gnu_delta} GNU
+                  <p
+                    className={`text-xs font-bold mt-1 ${turnResult.gnu_delta >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}
+                  >
+                    {turnResult.gnu_delta >= 0 ? "+" : ""}
+                    {turnResult.gnu_delta} GNU
                   </p>
                 </div>
                 <div className="flex-1 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 text-center">
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">相手</p>
                   <p className="text-2xl mt-1">{turnResult.opponent_is_correct ? "✅" : "❌"}</p>
-                  <p className={`text-xs font-bold mt-1 ${turnResult.opponent_gnu_delta >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
-                    {turnResult.opponent_gnu_delta >= 0 ? "+" : ""}{turnResult.opponent_gnu_delta} GNU
+                  <p
+                    className={`text-xs font-bold mt-1 ${turnResult.opponent_gnu_delta >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}
+                  >
+                    {turnResult.opponent_gnu_delta >= 0 ? "+" : ""}
+                    {turnResult.opponent_gnu_delta} GNU
                   </p>
                 </div>
               </div>
@@ -785,8 +842,12 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
               {/* Tips */}
               {turnResult.tips && (
                 <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">💡 Tips</p>
-                  <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed">{turnResult.tips}</p>
+                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
+                    💡 Tips
+                  </p>
+                  <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                    {turnResult.tips}
+                  </p>
                 </div>
               )}
 
@@ -809,34 +870,41 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
         {phase === "game_end" && gameEnd && (
           <div className="flex flex-col">
             {/* 結果バナー */}
-            <div className={`px-5 py-8 flex flex-col items-center gap-3 ${
-              gameEnd.result === "win"
-                ? "bg-linear-to-b from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/10"
-                : gameEnd.result === "lose"
-                ? "bg-linear-to-b from-zinc-50 to-zinc-100 dark:from-zinc-800/30 dark:to-zinc-800/20"
-                : "bg-linear-to-b from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/10"
-            }`}>
+            <div
+              className={`px-5 py-8 flex flex-col items-center gap-3 ${
+                gameEnd.result === "win"
+                  ? "bg-linear-to-b from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/10"
+                  : gameEnd.result === "lose"
+                    ? "bg-linear-to-b from-zinc-50 to-zinc-100 dark:from-zinc-800/30 dark:to-zinc-800/20"
+                    : "bg-linear-to-b from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/10"
+              }`}
+            >
               <div className="text-6xl">
                 {gameEnd.result === "win" ? "🏆" : gameEnd.result === "lose" ? "💀" : "🤝"}
               </div>
-              <p className={`text-3xl font-black tracking-tight ${
-                gameEnd.result === "win"
-                  ? "text-amber-600 dark:text-amber-400"
-                  : gameEnd.result === "lose"
-                  ? "text-zinc-600 dark:text-zinc-400"
-                  : "text-blue-600 dark:text-blue-400"
-              }`}>
+              <p
+                className={`text-3xl font-black tracking-tight ${
+                  gameEnd.result === "win"
+                    ? "text-amber-600 dark:text-amber-400"
+                    : gameEnd.result === "lose"
+                      ? "text-zinc-600 dark:text-zinc-400"
+                      : "text-blue-600 dark:text-blue-400"
+                }`}
+              >
                 {gameEnd.result === "win" ? "WIN!" : gameEnd.result === "lose" ? "LOSE" : "DRAW"}
               </p>
 
-              <div className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-bold ${
-                gameEnd.gnu_earned_this_game >= 0
-                  ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400"
-                  : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-400"
-              }`}>
+              <div
+                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-bold ${
+                  gameEnd.gnu_earned_this_game >= 0
+                    ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400"
+                    : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-400"
+                }`}
+              >
                 <span>🦬</span>
                 <span>
-                  {gameEnd.gnu_earned_this_game >= 0 ? "+" : ""}{gameEnd.gnu_earned_this_game.toLocaleString()} GNU
+                  {gameEnd.gnu_earned_this_game >= 0 ? "+" : ""}
+                  {gameEnd.gnu_earned_this_game.toLocaleString()} GNU
                 </span>
               </div>
             </div>
@@ -849,14 +917,20 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">あなたの正解数</p>
                   <p className="text-3xl font-black text-zinc-900 dark:text-white">
                     {gameEnd.your_correct_count}
-                    <span className="text-base font-normal text-zinc-400 dark:text-zinc-500"> / 4</span>
+                    <span className="text-base font-normal text-zinc-400 dark:text-zinc-500">
+                      {" "}
+                      / 4
+                    </span>
                   </p>
                 </div>
                 <div className="flex-1 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 text-center">
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">相手の正解数</p>
                   <p className="text-3xl font-black text-zinc-900 dark:text-white">
                     {gameEnd.opponent_correct_count}
-                    <span className="text-base font-normal text-zinc-400 dark:text-zinc-500"> / 4</span>
+                    <span className="text-base font-normal text-zinc-400 dark:text-zinc-500">
+                      {" "}
+                      / 4
+                    </span>
                   </p>
                 </div>
               </div>
@@ -864,7 +938,9 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
               {/* GNU 残高 */}
               <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-amber-700 dark:text-amber-400 font-medium">最終 GNU 残高</span>
+                  <span className="text-sm text-amber-700 dark:text-amber-400 font-medium">
+                    最終 GNU 残高
+                  </span>
                   <span className="text-xl font-black text-amber-700 dark:text-amber-400">
                     🦬 {gameEnd.your_final_gnu.toLocaleString()}
                   </span>
@@ -874,13 +950,25 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
               {/* ターン別履歴 */}
               {turnHistory.length > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">ターン履歴</p>
+                  <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                    ターン履歴
+                  </p>
                   {turnHistory.map((t, i) => (
-                    <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-xs">
+                    <div
+                      key={i}
+                      className="flex items-center justify-between px-3 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-xs"
+                    >
                       <span className="text-zinc-500 dark:text-zinc-400">ターン {t.turn}</span>
                       <span>{t.is_correct ? "✅" : "❌"}</span>
-                      <span className={t.gnu_delta >= 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-rose-500 font-bold"}>
-                        {t.gnu_delta >= 0 ? "+" : ""}{t.gnu_delta} GNU
+                      <span
+                        className={
+                          t.gnu_delta >= 0
+                            ? "text-emerald-600 dark:text-emerald-400 font-bold"
+                            : "text-rose-500 font-bold"
+                        }
+                      >
+                        {t.gnu_delta >= 0 ? "+" : ""}
+                        {t.gnu_delta} GNU
                       </span>
                     </div>
                   ))}
@@ -909,7 +997,9 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
             <div className="px-5 py-8 flex flex-col items-center gap-3 bg-linear-to-b from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/10">
               <div className="text-6xl">🏆</div>
               <p className="text-3xl font-black text-amber-600 dark:text-amber-400">TKO WIN!</p>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">{tkoResult.message}</p>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
+                {tkoResult.message}
+              </p>
               <div className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 font-bold text-emerald-700 dark:text-emerald-400">
                 <span>🦬</span>
                 <span>+{tkoResult.tko_bonus.toLocaleString()} GNU ボーナス</span>
@@ -917,7 +1007,9 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
             </div>
             <div className="px-5 py-4 space-y-3">
               <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 flex items-center justify-between">
-                <span className="text-sm text-amber-700 dark:text-amber-400 font-medium">最終 GNU 残高</span>
+                <span className="text-sm text-amber-700 dark:text-amber-400 font-medium">
+                  最終 GNU 残高
+                </span>
                 <span className="text-xl font-black text-amber-700 dark:text-amber-400">
                   🦬 {tkoResult.your_final_gnu.toLocaleString()}
                 </span>
@@ -942,7 +1034,9 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
         {phase === "error" && (
           <div className="p-10 flex flex-col items-center gap-4">
             <div className="text-5xl">😵</div>
-            <p className="font-bold text-zinc-900 dark:text-white">{errorMsg ?? "エラーが発生しました"}</p>
+            <p className="font-bold text-zinc-900 dark:text-white">
+              {errorMsg ?? "エラーが発生しました"}
+            </p>
             <Link
               href="/lobby"
               className="px-6 py-3 bg-linear-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:scale-[1.02] transition-all duration-200"
