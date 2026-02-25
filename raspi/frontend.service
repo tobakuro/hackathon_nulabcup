@@ -9,7 +9,7 @@ WorkingDirectory=%h/workspace/hackathon_nulabcup/frontend
 # Node.js バイナリは devbox が管理するプロジェクト内の Nix プロファイルを参照する
 # devbox install を実行すると .devbox/nix/profile/default/bin/ 以下のシンボリックリンクが更新される
 # setup.sh でこのファイルを ~/.config/systemd/user/frontend.service にコピーして使う
-ExecStart=%h/workspace/hackathon_nulabcup/.devbox/nix/profile/default/bin/node ./node_modules/.bin/next start -p 3000
+ExecStart=%h/workspace/hackathon_nulabcup/.devbox/nix/profile/default/bin/node ./node_modules/.bin/next start -p 3002
 EnvironmentFile=%h/workspace/hackathon_nulabcup/frontend/.env
 Restart=on-failure
 RestartSec=5
