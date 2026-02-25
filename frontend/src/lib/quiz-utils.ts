@@ -1,6 +1,6 @@
 export function isQuizCandidatePath(path: string): boolean {
   const lower = path.toLowerCase();
-  if (lower.endsWith("readme.md")) return false;
+  if (lower === "readme.md" || lower.endsWith("/readme.md")) return false;
   if (lower.includes("/docs/") || lower.startsWith("docs/")) return false;
   return (
     lower.endsWith(".ts") ||

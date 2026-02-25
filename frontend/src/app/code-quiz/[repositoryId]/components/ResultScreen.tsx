@@ -17,6 +17,7 @@ interface ResultScreenProps {
 }
 
 function getScoreRank(totalScore: number, maxScore: number): { label: string; color: string } {
+  if (maxScore <= 0) return { label: "N/A", color: "text-zinc-400" };
   const ratio = totalScore / maxScore;
   if (ratio >= 0.9) return { label: "S", color: "text-yellow-500" };
   if (ratio >= 0.7) return { label: "A", color: "text-emerald-500" };

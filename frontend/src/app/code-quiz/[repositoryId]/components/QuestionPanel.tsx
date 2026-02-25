@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { CodeQuizQuestionPublic, AnswerResult } from "@/app/actions/code-quiz";
+
+const TIME_LIMIT = 60;
 
 interface QuestionPanelProps {
   question: CodeQuizQuestionPublic;
@@ -26,23 +28,32 @@ export default function QuestionPanel({
   onNext,
   isLastQuestion,
 }: QuestionPanelProps) {
-  const TIME_LIMIT = 60;
   const [remainingSeconds, setRemainingSeconds] = useState(TIME_LIMIT);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (isReviewing) return;
     setRemainingSeconds(TIME_LIMIT);
-    const interval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       setRemainingSeconds((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
+        const next = prev - 1;
+        if (next <= 0) {
+          if (intervalRef.current !== null) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
           setTimeout(onTimeout, 0);
           return 0;
         }
-        return prev - 1;
+        return next;
       });
     }, 1000);
-    return () => clearInterval(interval);
+    return () => {
+      if (intervalRef.current !== null) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [isReviewing, question.questionIndex, onTimeout]);
 
   const canSubmit = selectedFilePath !== null && selectedLineNumber !== null && !isReviewing;

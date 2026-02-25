@@ -162,27 +162,31 @@ export async function createCodeSessionAction(
 
   if (questions.length === 0) return null;
 
-  const [newSession] = await db
-    .insert(codeSessions)
-    .values({
-      userId: session.user.id,
-      repositoryId,
-      roomId: roomId ?? null,
-      mode,
-      totalQuestions: questions.length,
-    })
-    .returning({ id: codeSessions.id });
+  const newSession = await db.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(codeSessions)
+      .values({
+        userId: session.user.id,
+        repositoryId,
+        roomId: roomId ?? null,
+        mode,
+        totalQuestions: questions.length,
+      })
+      .returning({ id: codeSessions.id });
 
-  await db.insert(codeAnswers).values(
-    questions.map((q) => ({
-      sessionId: newSession.id,
-      questionIndex: q.questionIndex,
-      targetFileId: q.targetFileId,
-      targetFilePath: q.targetFilePath,
-      targetLineNumber: q.targetLineNumber,
-      targetLineContent: q.targetLineContent,
-    })),
-  );
+    await tx.insert(codeAnswers).values(
+      questions.map((q) => ({
+        sessionId: inserted.id,
+        questionIndex: q.questionIndex,
+        targetFileId: q.targetFileId,
+        targetFilePath: q.targetFilePath,
+        targetLineNumber: q.targetLineNumber,
+        targetLineContent: q.targetLineContent,
+      })),
+    );
+
+    return inserted;
+  });
 
   const publicQuestions: CodeQuizQuestionPublic[] = questions.map((q) => ({
     questionIndex: q.questionIndex,
@@ -215,6 +219,16 @@ export async function submitCodeAnswerAction(
   const session = await auth();
   if (!session?.user?.id) return null;
 
+  const clampedLineNumber = Math.max(0, Math.floor(answeredLineNumber));
+  const clampedTimeSpentMs = Math.max(0, Math.min(timeSpentMs, 3_600_000));
+
+  const [codeSession] = await db
+    .select({ userId: codeSessions.userId })
+    .from(codeSessions)
+    .where(eq(codeSessions.id, sessionId));
+
+  if (!codeSession || codeSession.userId !== session.user.id) return null;
+
   const [answer] = await db
     .select()
     .from(codeAnswers)
@@ -224,20 +238,18 @@ export async function submitCodeAnswerAction(
   if (!answer) return null;
 
   const isCorrectFile = answer.targetFilePath === answeredFilePath;
-  const lineDifference = isCorrectFile
-    ? Math.abs(answer.targetLineNumber - answeredLineNumber)
-    : -1;
-  const score = calculateScore(isCorrectFile, lineDifference, timeSpentMs);
+  const lineDifference = isCorrectFile ? Math.abs(answer.targetLineNumber - clampedLineNumber) : -1;
+  const score = calculateScore(isCorrectFile, lineDifference, clampedTimeSpentMs);
 
   await db
     .update(codeAnswers)
     .set({
       answeredFilePath,
-      answeredLineNumber,
+      answeredLineNumber: clampedLineNumber,
       isCorrectFile,
       lineDifference: isCorrectFile ? lineDifference : null,
       score,
-      timeSpentMs,
+      timeSpentMs: clampedTimeSpentMs,
       answeredAt: new Date(),
     })
     .where(eq(codeAnswers.id, answer.id));
@@ -275,6 +287,13 @@ export async function submitCodeAnswerAction(
 export async function getCodeSessionResultAction(sessionId: string): Promise<SessionResult | null> {
   const session = await auth();
   if (!session?.user?.id) return null;
+
+  const [codeSession] = await db
+    .select({ userId: codeSessions.userId })
+    .from(codeSessions)
+    .where(eq(codeSessions.id, sessionId));
+
+  if (!codeSession || codeSession.userId !== session.user.id) return null;
 
   const answers = await db.select().from(codeAnswers).where(eq(codeAnswers.sessionId, sessionId));
 

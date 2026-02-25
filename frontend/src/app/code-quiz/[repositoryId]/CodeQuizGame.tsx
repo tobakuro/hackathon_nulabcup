@@ -71,7 +71,8 @@ export default function CodeQuizGame({ repositoryId, repositoryName }: CodeQuizG
       setSelectedLineNumber(null);
       setQuestionStartTime(Date.now());
       setGamePhase("playing");
-    } catch {
+    } catch (err) {
+      console.error("createCodeSessionAction failed:", err);
       setError("ゲームの開始に失敗しました");
       setGamePhase("idle");
     }
@@ -106,14 +107,20 @@ export default function CodeQuizGame({ repositoryId, repositoryName }: CodeQuizG
       timeSpentMs,
     );
 
-    if (!result) return;
+    const finalResult = result ?? {
+      isCorrectFile: false,
+      lineDifference: -1,
+      score: 0,
+      correctFilePath: "",
+      correctLineNumber: 0,
+    };
 
-    setLastResult(result);
-    setTotalScore((prev) => prev + result.score);
+    setLastResult(finalResult);
+    setTotalScore((prev) => prev + finalResult.score);
     setResults((prev) => [
       ...prev,
       {
-        ...result,
+        ...finalResult,
         questionIndex: currentQuestionIndex,
         targetLineContent: questions[currentQuestionIndex].targetLineContent,
       },
@@ -142,13 +149,19 @@ export default function CodeQuizGame({ repositoryId, repositoryName }: CodeQuizG
       timeSpentMs,
     );
 
-    if (!result) return;
+    const finalResult = result ?? {
+      isCorrectFile: false,
+      lineDifference: -1,
+      score: 0,
+      correctFilePath: "",
+      correctLineNumber: 0,
+    };
 
-    setLastResult(result);
+    setLastResult(finalResult);
     setResults((prev) => [
       ...prev,
       {
-        ...result,
+        ...finalResult,
         questionIndex: currentQuestionIndex,
         targetLineContent: questions[currentQuestionIndex].targetLineContent,
       },

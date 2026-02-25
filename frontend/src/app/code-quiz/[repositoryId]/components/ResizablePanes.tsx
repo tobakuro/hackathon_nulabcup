@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, useLayoutEffect } from "react";
 
 interface ResizablePanesProps {
   left: React.ReactNode;
@@ -23,7 +23,7 @@ export default function ResizablePanes({
   const [leftWidth, setLeftWidth] = useState(defaultLeftWidth);
   const [rightWidth, setRightWidth] = useState(0);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (rightWidth !== 0 || !containerRef.current) return;
     const containerWidth = containerRef.current.offsetWidth;
     setRightWidth(Math.round(containerWidth * defaultRightRatio));
