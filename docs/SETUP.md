@@ -32,26 +32,36 @@ devbox shell
 
 初回はパッケージのダウンロードに時間がかかります。完了すると以下が自動で実行されます：
 
-- PostgreSQL のデータディレクトリ初期化（`--no-locale --encoding=UTF8`）
-- PostgreSQL の起動（`pg_ctl` による直接起動）
-- `hackathon` データベース作成
-- マイグレーション適用（初回のみ）
+- PostgreSQL のデータディレクトリ初期化（`initdb --no-locale --encoding=UTF8`）
+- 環境変数のエクスポート（`PGHOST=/tmp` など）
 
-2回目以降の `devbox shell` では既存の状態を検出してスキップするため、高速に起動します。
+### 3. 初回セットアップ（推奨）
 
-### 3. フロントエンドの依存関係インストール
+**ワンコマンドでセットアップ:**
 
 ```bash
+devbox run setup
+```
+
+これにより以下が自動実行されます：
+- サービス起動（PostgreSQL, Redis）
+- フロントエンド依存関係インストール
+- データベース作成とマイグレーション適用
+
+**または手動で各ステップ実行:**
+
+```bash
+# サービスを起動
+devbox services start
+
+# フロントエンド依存関係インストール
 devbox run frontend:install
+
+# データベースとマイグレーション
+devbox run db:setup
 ```
 
-### 4. バックエンドの依存関係インストール
-
-```bash
-cd backend && go mod download && cd ..
-```
-
-### 5. 開発サーバーの起動
+### 4. 開発サーバーの起動
 
 ターミナルを2つ開き、それぞれ `devbox shell` に入った状態で:
 
@@ -74,15 +84,19 @@ devbox run frontend:dev
 
 ## 利用可能なスクリプト
 
-| コマンド                      | 説明                                                |
-| ----------------------------- | --------------------------------------------------- |
-| `devbox run db:setup`         | DB作成 + マイグレーション（手動実行用、通常は不要） |
-| `devbox run backend:dev`      | バックエンド開発サーバー（ホットリロード）          |
-| `devbox run backend:run`      | バックエンド実行（ホットリロードなし）              |
-| `devbox run backend:build`    | バックエンドビルド                                  |
-| `devbox run frontend:dev`     | フロントエンド開発サーバー                          |
-| `devbox run frontend:install` | フロントエンド依存関係インストール                  |
-| `devbox run sqlc:generate`    | SQLCコード生成                                      |
+| コマンド                      | 説明                                                        |
+| ----------------------------- | ----------------------------------------------------------- |
+| `devbox run setup`            | 初回セットアップ（サービス起動 + npm install + DB作成）     |
+| `devbox services start`       | サービス（PostgreSQL, Redis）を起動                         |
+| `devbox services stop`        | サービスを停止                                              |
+| `devbox services ls`          | サービスの状態確認                                          |
+| `devbox run db:setup`         | DB作成 + マイグレーション（手動実行用）                      |
+| `devbox run backend:dev`      | バックエンド開発サーバー（ホットリロード）                   |
+| `devbox run backend:run`      | バックエンド実行（ホットリロードなし）                       |
+| `devbox run backend:build`    | バックエンドビルド                                          |
+| `devbox run frontend:dev`     | フロントエンド開発サーバー                                   |
+| `devbox run frontend:install` | フロントエンド依存関係インストール                           |
+| `devbox run sqlc:generate`    | SQLCコード生成                                              |
 
 ## DB接続情報
 
@@ -109,17 +123,41 @@ psql hackathon
 ### PostgreSQL が起動しない / データが壊れた
 
 ```bash
+# サービスを停止
+devbox services stop
+
 # PostgreSQLのデータディレクトリをリセット（開発データは消えます）
-rm -rf .devbox/virtenv/postgresql/data
-devbox shell   # init_hook で自動再初期化・DB作成・マイグレーションまで実行
+rm -rf ~/.local/share/hackathon_nulabcup/postgresql/data
+
+# devbox shellに入り直してinitdbを実行
+exit
+devbox shell
+
+# サービスを再起動
+devbox services start
+
+# データベースをセットアップ
+devbox run db:setup
 ```
 
 ### マイグレーションを再適用したい
 
 ```bash
-# sentinelファイルを削除してから devbox shell に入り直す
-rm .devbox/virtenv/postgresql/data/.migration_applied
 devbox run db:setup
+```
+
+### サービスの状態を確認したい
+
+```bash
+# 実行中のサービス一覧
+devbox services ls
+
+# PostgreSQLの接続確認
+pg_isready -h /tmp
+
+# プロセス確認
+ps aux | grep postgres
+ps aux | grep redis
 ```
 
 ### ポートが競合する
@@ -128,12 +166,21 @@ devbox run db:setup
 # 何がポートを使っているか確認
 lsof -i :8080   # バックエンド
 lsof -i :3000   # フロントエンド
+lsof -i :5432   # PostgreSQL（通常はUnixソケットなので不要）
+
+# プロセスを停止
+kill -9 $(lsof -ti:8080)
+kill -9 $(lsof -ti:3000)
 ```
 
-### process-compose のロックが残っている
+### サービスが正常に停止しない
 
 ```bash
-# ソケット・ロックファイルを手動で削除
-rm -f .devbox/virtenv/postgresql/.s.PGSQL.5432 .devbox/virtenv/postgresql/.s.PGSQL.5432.lock
-devbox shell
+# devbox servicesを強制停止
+devbox services stop
+
+# それでもダメな場合はプロセスを直接停止
+pkill -f process-compose
+pkill postgres
+pkill redis-server
 ```
