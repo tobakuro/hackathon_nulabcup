@@ -181,9 +181,11 @@ export default function RepoManager({
                   className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden"
                 >
                   {/* ヘッダー行（クリックで展開） */}
+                  {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
                   <div
                     className="flex items-center justify-between p-4 cursor-pointer select-none"
                     onClick={() => setExpandedId(isExpanded ? null : repo.id)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setExpandedId(isExpanded ? null : repo.id); }}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 shrink-0">
@@ -221,7 +223,9 @@ export default function RepoManager({
                       {loadingId === repo.id ? (
                         <div
                           className="flex flex-col gap-1 w-28"
+                          role="presentation"
                           onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
                         >
                           <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
                             <div
