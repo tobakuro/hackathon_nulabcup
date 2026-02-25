@@ -109,6 +109,46 @@ jobs:
             frontend/frontend-standalone.tar.gz \
             "$RASPI_USER@$RASPI_HOST:/opt/frontend/frontend-standalone.tar.gz"
 
+      - name: Write .env file from GitHub Secrets
+        env:
+          FRONTEND_DATABASE_URL: ${{ secrets.FRONTEND_DATABASE_URL }}
+          FRONTEND_GITHUB_ID: ${{ secrets.FRONTEND_GITHUB_ID }}
+          FRONTEND_GITHUB_SECRET: ${{ secrets.FRONTEND_GITHUB_SECRET }}
+          FRONTEND_NEXTAUTH_SECRET: ${{ secrets.FRONTEND_NEXTAUTH_SECRET }}
+          FRONTEND_NEXTAUTH_URL: ${{ secrets.FRONTEND_NEXTAUTH_URL }}
+          FRONTEND_GEMINI_API_KEY: ${{ secrets.FRONTEND_GEMINI_API_KEY }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_WS_URL: ${{ secrets.NEXT_PUBLIC_WS_URL }}
+        run: |
+          {
+            printf 'DATABASE_URL=%s\n' "$FRONTEND_DATABASE_URL"
+            printf 'GITHUB_ID=%s\n' "$FRONTEND_GITHUB_ID"
+            printf 'GITHUB_SECRET=%s\n' "$FRONTEND_GITHUB_SECRET"
+            printf 'NEXTAUTH_SECRET=%s\n' "$FRONTEND_NEXTAUTH_SECRET"
+            printf 'NEXTAUTH_URL=%s\n' "$FRONTEND_NEXTAUTH_URL"
+            printf 'GEMINI_API_KEY=%s\n' "$FRONTEND_GEMINI_API_KEY"
+            printf 'NEXT_PUBLIC_API_URL=%s\n' "$NEXT_PUBLIC_API_URL"
+            printf 'NEXT_PUBLIC_WS_URL=%s\n' "$NEXT_PUBLIC_WS_URL"
+          } > /tmp/frontend.env
+
+      - name: Transfer .env to Raspberry Pi
+        env:
+          RASPI_HOST: ${{ secrets.RASPI_HOST }}
+          RASPI_USER: ${{ secrets.RASPI_USER }}
+          CF_CLIENT_ID: ${{ secrets.CF_CLIENT_ID }}
+          CF_CLIENT_SECRET: ${{ secrets.CF_CLIENT_SECRET }}
+        run: |
+          scp -o ProxyCommand="cloudflared access ssh --hostname $RASPI_HOST --id $CF_CLIENT_ID --secret $CF_CLIENT_SECRET" \
+            -i ~/.ssh/id_ed25519 \
+            /tmp/frontend.env \
+            "$RASPI_USER@$RASPI_HOST:/opt/frontend/.env"
+          ssh \
+            -o ProxyCommand="cloudflared access ssh --hostname $RASPI_HOST --id $CF_CLIENT_ID --secret $CF_CLIENT_SECRET" \
+            -i ~/.ssh/id_ed25519 \
+            "$RASPI_USER@$RASPI_HOST" \
+            'chmod 600 /opt/frontend/.env'
+          rm -f /tmp/frontend.env
+
       - name: Deploy & restart service
         env:
           RASPI_HOST: ${{ secrets.RASPI_HOST }}
@@ -131,10 +171,7 @@ jobs:
             rm frontend-standalone.tar.gz
             # Run drizzle migrations
             cd app
-            DATABASE_URL=$(systemctl --user show-environment 2>/dev/null | grep DATABASE_URL= | cut -d= -f2- || true)
-            if [ -z "$DATABASE_URL" ]; then
-              DATABASE_URL=$(grep -oP "(?<=Environment=DATABASE_URL=).*" ~/.config/systemd/user/frontend.service 2>/dev/null || true)
-            fi
+            DATABASE_URL=$(grep -oP "(?<=DATABASE_URL=).*" /opt/frontend/.env 2>/dev/null || true)
             if [ -n "$DATABASE_URL" ]; then
               echo "Running drizzle migrations..."
               DATABASE_URL="$DATABASE_URL" npx drizzle-kit migrate 2>&1 || echo "Migration skipped or failed (non-fatal)"

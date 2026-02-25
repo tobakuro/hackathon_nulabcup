@@ -63,19 +63,12 @@ mkdir -p ~/.config/systemd/user
 # サービスファイルをコピー（リポジトリの raspi/frontend.service）
 cp raspi/frontend.service ~/.config/systemd/user/frontend.service
 
-# !!!! 重要: 環境変数を実際の値に編集 !!!!
-nano ~/.config/systemd/user/frontend.service
-# 以下を設定:
-#   DATABASE_URL=postgres://hackathon:<実際のパスワード>@localhost:5432/hackathon
-#   GITHUB_ID=<GitHub OAuth App の Client ID>
-#   GITHUB_SECRET=<GitHub OAuth App の Client Secret>
-#   NEXTAUTH_SECRET=<ランダム文字列: openssl rand -base64 32>
-#   GEMINI_API_KEY=<Gemini API キー>
-
 # サービスのリロードと有効化
 systemctl --user daemon-reload
 systemctl --user enable frontend.service
 ```
+
+> 環境変数（DB接続情報、APIキー等）は GitHub Secrets から自動で `/opt/frontend/.env` に生成されます。手動設定は不要です。
 
 ### 4. lingering の有効化
 
@@ -95,7 +88,8 @@ Cloudflare Zero Trust ダッシュボードで、Tunnel のルーティングを
 
 ## GitHub Secrets の設定
 
-フロントエンドのデプロイには、既存のバックエンド用 Secrets に加えて以下が必要です：
+フロントエンドのデプロイには、既存のバックエンド用 Secrets に加えて以下が必要です。
+デプロイ時にこれらの Secrets から Raspberry Pi 上に `.env` ファイルが自動生成されます。
 
 ### 既存 Secrets（バックエンドと共有）
 
@@ -108,14 +102,23 @@ Cloudflare Zero Trust ダッシュボードで、Tunnel のルーティングを
 | `CF_CLIENT_ID`        | Cloudflare Access Client ID    |
 | `CF_CLIENT_SECRET`    | Cloudflare Access Client Secret|
 
-### 追加が必要な Secrets
+### 追加が必要な Secrets（フロントエンド用）
 
-| Secret 名             | 値                              | 説明                           |
-| ---------------------- | ------------------------------- | ------------------------------ |
-| `NEXT_PUBLIC_API_URL`  | `https://nulab-api.uomi.site`  | バックエンド API の URL         |
-| `NEXT_PUBLIC_WS_URL`   | `wss://nulab-api.uomi.site`    | WebSocket の URL               |
+| Secret 名                  | 値の例                                                    | 説明                            |
+| -------------------------- | --------------------------------------------------------- | ------------------------------- |
+| `NEXT_PUBLIC_API_URL`      | `https://nulab-api.uomi.site`                             | バックエンド API の URL（ビルド時） |
+| `NEXT_PUBLIC_WS_URL`       | `wss://nulab-api.uomi.site`                               | WebSocket の URL（ビルド時）      |
+| `FRONTEND_DATABASE_URL`    | `postgres://hackathon:PASSWORD@localhost:5432/hackathon`   | DB 接続文字列                    |
+| `FRONTEND_GITHUB_ID`       | GitHub OAuth App の Client ID                              | GitHub OAuth 認証用              |
+| `FRONTEND_GITHUB_SECRET`   | GitHub OAuth App の Client Secret                          | GitHub OAuth 認証用              |
+| `FRONTEND_NEXTAUTH_SECRET` | `openssl rand -base64 32` で生成                           | NextAuth セッション暗号化キー     |
+| `FRONTEND_NEXTAUTH_URL`    | `https://nulab.uomi.site`                                 | NextAuth のベース URL            |
+| `FRONTEND_GEMINI_API_KEY`  | Gemini API キー                                            | LLM API 用                      |
 
 **設定方法:** GitHub リポジトリ → Settings → Secrets and variables → Actions → New repository secret
+
+> **仕組み:** デプロイ時に GitHub Secrets から `/opt/frontend/.env` が自動生成され、systemd の `EnvironmentFile=` で読み込まれます。
+> raspi 上で手動で環境変数を設定する必要はありません。
 
 ---
 

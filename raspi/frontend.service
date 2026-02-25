@@ -9,28 +9,14 @@ ExecStart=/usr/bin/node server.js
 Restart=on-failure
 RestartSec=5
 
-# Environment variables (override with .env file or Environment= directives)
+# Static config
 Environment=NODE_ENV=production
 Environment=PORT=3002
 Environment=HOSTNAME=127.0.0.1
 
-# Database (local PostgreSQL via Docker)
-Environment=DATABASE_URL=postgres://hackathon:YOUR_DB_PASSWORD@localhost:5432/hackathon
-
-# GitHub OAuth
-Environment=GITHUB_ID=
-Environment=GITHUB_SECRET=
-
-# NextAuth
-Environment=NEXTAUTH_SECRET=
-Environment=NEXTAUTH_URL=https://nulab.uomi.site
-
-# Gemini API
-Environment=GEMINI_API_KEY=
-
-# Public URLs (baked at build time, but also set at runtime for SSR)
-Environment=NEXT_PUBLIC_API_URL=https://nulab-api.uomi.site
-Environment=NEXT_PUBLIC_WS_URL=wss://nulab-api.uomi.site
+# Secrets and runtime config are loaded from .env file
+# This file is generated during CD deploy from GitHub Secrets
+EnvironmentFile=/opt/frontend/.env
 
 [Install]
 WantedBy=default.target
