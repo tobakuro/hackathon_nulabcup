@@ -13,7 +13,6 @@ ExecStart=%h/workspace/hackathon_nulabcup/.devbox/nix/profile/default/bin/node .
 EnvironmentFile=%h/workspace/hackathon_nulabcup/frontend/.env
 Restart=on-failure
 RestartSec=5
-MemoryMax=512M
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=frontend
