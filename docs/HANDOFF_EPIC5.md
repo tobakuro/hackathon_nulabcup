@@ -5,8 +5,7 @@
 Epic 5「バトルシステム・ゲームループ」のバックエンド実装を完了した。
 Go の goroutine / channel / select を使ったリアルタイム対戦ゲームループが動作する状態になっている。
 
-lint 修正・開発環境設定を実施した。
-また、wscat を使った2プレイヤー手動対戦により全 Issue の動作確認済み。
+wscat を使った2プレイヤー手動対戦により全 Issue の動作確認済み。
 
 ---
 
@@ -30,16 +29,16 @@ lint 修正・開発環境設定を実施した。
 
 | ファイル | 役割 |
 |---|---|
-| `backend/internal/domain/entity/question.go` | Question 型 + CorrectIndex() メソッド |
+| `backend/internal/domain/entity/question.go` | Question 型・NumChoices 定数・Validate() / CorrectIndex() メソッド |
 | `backend/internal/handler/game_room.go` | ゲームループ本体（主要ロジック） |
-| `backend/internal/handler/room_manager.go` | ルームレジストリ |
+| `backend/internal/handler/room_manager.go` | ルームレジストリ・ユーザー取得/作成・退室監視 |
 
 ### 変更
 
 | ファイル | 変更内容 |
 |---|---|
-| `backend/cmd/server/main.go` | RoomManager・NewRoomHandler の DI 追加 |
-| `backend/internal/handler/ws_room_handler.go` | フル実装（ユーザー取得・自動作成・ルーム接続・ゲームループ起動） |
+| `backend/cmd/server/main.go` | NewRoomHandler の DI 修正（userRepo 除去） |
+| `backend/internal/handler/ws_room_handler.go` | userRepo 直接参照を除去し RoomManager 経由に統一 |
 
 ---
 
@@ -49,17 +48,20 @@ lint 修正・開発環境設定を実施した。
 ws_room_handler.go (HandleRoom)
         |
         v
-RoomManager.Join()          ← ルームを getOrCreate して player を登録
+RoomManager.GetOrCreateUser()   ← github_login でユーザー取得、未登録なら自動作成
         |
         v
-GameRoom.join()             ← player[0] or player[1] としてセット
-        |                      joined==2 で startCh を close
+RoomManager.Join()              ← ルームを getOrCreate して player を登録
+        |                          joined==2 で退室監視 goroutine を起動
+        v
+GameRoom.join()                 ← player[0] or player[1] としてセット
+        |                          joined==2 で startCh を close
         |
-        +-- go room.run()       ← player[0] の HTTP goroutine が起動（1回のみ）
-        +-- go room.startReaderLoop(idx)  ← 各 player の HTTP goroutine が起動
+        +-- go room.run()              ← player[0] の HTTP goroutine が起動（1回のみ）
+        +-- go room.startReaderLoop()  ← 各 player の HTTP goroutine が起動
         |
         v
-<-doneCh                    ← 接続が閉じるまで HTTP goroutine をブロック
+<-doneCh                        ← 接続が閉じるまで HTTP goroutine をブロック
 ```
 
 ### GameRoom.run() フロー
@@ -69,10 +71,11 @@ GameRoom.join()             ← player[0] or player[1] としてセット
 2. ev_room_ready 送信
 3. 問題受取フェーズ (60秒タイムアウト)
    - 両プレイヤーから act_submit_questions 待機
+   - 問題数・各 Question のバリデーション（4択・ correct_answer 整合性）
 4. ターンループ (4回)
-   a. ev_turn_start 送信（各プレイヤーに異なる問題）
+   a. ev_turn_start 送信（各プレイヤーに異なる問題・min_bet/max_bet を含む）
    b. 15秒タイマー + select
-      - act_bet_gnu  → ベット額を記録
+      - act_bet_gnu  → バリデーション後にベット額を記録、ev_bet_confirmed を返す
       - act_submit_answer → 回答を記録、両者回答完了で即時終了
       - タイムアウト → 未回答は不正解扱い
       - 切断 → handleTKO
@@ -98,13 +101,26 @@ GameRoom.join()             ← player[0] or player[1] としてセット
 | イベント型 | タイミング | ペイロード概要 |
 |---|---|---|
 | `ev_room_ready` | 両プレイヤー接続完了 | opponent 情報・自分の gnu_balance |
-| `ev_turn_start` | 各ターン開始 | 問題文・選択肢・難易度・制限時間 |
+| `ev_turn_start` | 各ターン開始 | 問題文・選択肢・難易度・制限時間・min_bet・max_bet |
+| `ev_bet_confirmed` | ベット確定時 | amount・min_bet・max_bet |
 | `ev_turn_result` | ターン終了 | 正解・tips・gnu 増減・双方の is_correct |
 | `ev_game_end` | 4ターン終了後 | 勝敗・正解数・最終 gnu_balance |
 | `ev_tko` | 対戦相手切断時 | TKO ボーナス (+300 Gnu)・最終残高 |
-| `ev_error` | 各種エラー | code・message |
+| `ev_error` | 各種エラー | code・message（・min_bet/max_bet: invalid_bet 時） |
 
-### act_submit_questions ペイロード詳細
+#### ev_error code 一覧
+
+| code | 発生条件 |
+|---|---|
+| `invalid_bet` | ベット額が `minBet(0)` 未満または `gnuBalance` 超過 |
+| `invalid_questions` | 問題数が不足、選択肢が4件以外、correct_answer が選択肢に含まれない |
+| `question_timeout` | 60秒以内に問題が揃わなかった |
+| `opponent_disconnected` | ゲーム開始前に相手が切断 |
+| `join_failed` | ルームへの参加に失敗（満員など） |
+
+---
+
+## act_submit_questions ペイロード詳細
 
 ```json
 {
@@ -138,6 +154,7 @@ GameRoom.join()             ← player[0] or player[1] としてセット
 正解: +100 Gnu + bet額
 不正解: -bet額（bet=0なら変化なし）
 TKO勝利: +300 Gnu ボーナス
+bet制約: minBet(0) 以上・現在の gnuBalance 以下（範囲外は ev_error を返して棄却）
 
 勝敗判定:
   1. 正解数が多い方が勝ち
@@ -149,39 +166,67 @@ TKO勝利: +300 Gnu ボーナス
 
 ---
 
+## 変更詳細
+
+### 1. userRepo 二重注入の修正
+
+**問題:** `NewRoomHandler(roomManager, userRepo)` と `NewRoomManager(userRepo)` の両方に `userRepo` を渡しており、リポジトリへのアクセス経路が2つ存在していた。
+
+**対応:**
+- `RoomManager.GetOrCreateUser(ctx, githubLogin, githubIDStr)` を追加し、ユーザー取得・自動作成ロジックを `RoomManager` に集約
+- `RoomHandler` から `userRepo` フィールドを除去
+- `NewRoomHandler(manager)` に変更（`userRepo` 引数を除去）
+- `ErrInvalidGitHubID` sentinel error を追加し、`HandleRoom` 側で 400/500 を判別
+
+### 2. ベットバリデーションの強化
+
+**問題:** 範囲外のベット額（負値・残高超過）を送信しても無言でクランプされ、クライアントにフィードバックがなかった。最小値・最大値も定義されていなかった。
+
+**対応:**
+- `minBet = 0` 定数を追加
+- 範囲外ベットをサイレントクランプから**拒否**に変更し `ev_error{code: "invalid_bet"}` を返す
+- 正常ベット確定時に `ev_bet_confirmed{amount, min_bet, max_bet}` を送信
+- `ev_turn_start` ペイロードに `min_bet` / `max_bet` を追加（フロントの UI 用）
+
+### 3. Question バリデーションの追加
+
+**問題:** `Choices []string` に長さ制約がなく、4択以外の問題を生成できた。`CorrectIndex()` が `-1` を返すケースを呼び出し元が個別にケアする必要があった。
+
+**対応:**
+- `entity.NumChoices = 4` 定数を追加
+- `Question.Validate() error` を追加（選択肢数チェック・`correct_answer` 包含チェック）
+- `act_submit_questions` 受信時に全問題へ `Validate()` を呼び出し、不正な場合は `ev_error{code: "invalid_questions"}` を返す
+
+### 4. ルームのメモリリーク修正
+
+**問題:** `remove` は非公開メソッドであり、全プレイヤー退室後もルームが `rooms` マップに残り続けていた。
+
+**対応:**
+- `RoomManager.Join` 内で 2人目参加時に退室監視 goroutine を起動
+- `sync.WaitGroup` で両プレイヤーの `doneCh` を並行待機し、両方 close されたタイミングで `remove` を呼ぶ
+
+---
+
 ## 未実装・残課題
 
 | 項目 | 内容 |
 |---|---|
 | `match_histories` テーブル保存 | 試合結果の永続化（現在は gnu_balance 更新のみ） |
 | RoomRepository.UpdateStatus | ルームステータス (waiting → in_progress → finished) の DB 更新 |
-| フロントエンド側実装 | Epic 6（バトル画面 UI 等） |
+| フロントエンド側実装 | Epic 6（バトル画面 UI・invalid_bet エラー表示等） |
 | Epic 2, 3 | ユーザー認証 API、LLM 問題生成エンジン |
 
 ---
 
-## 動作確認済み（wscat による手動対戦）
+## 動作確認方法（wscat による手動対戦）
 
-フロントエンド（Epic 6）未実装の状態でも、wscat を使って全 Issue の動作を確認した。
-
-### wscat とは
-
-Node.js 製の WebSocket コマンドラインクライアント。インストール:
+### 必要ツール
 
 ```bash
 npm install -g wscat
 ```
 
-接続コマンド例:
-```bash
-wscat -c "ws://localhost:8080/ws/matchmake?github_login=player1&github_id=1" -H "Origin: http://localhost:3000"
-```
-
-- `<` : サーバーから届いたメッセージ
-- `>` : 自分が送信するメッセージ（プロンプトに入力して Enter）
-- **注意**: `>` はシェルではなく WS 送信プロンプト。別コマンドを実行したい場合は新しいターミナルを開く
-
-### 手動対戦の手順（ターミナル5本構成）
+### 手順（ターミナル5本構成）
 
 **T1: バックエンド起動**
 ```bash
@@ -217,22 +262,15 @@ wscat -c "ws://localhost:8080/ws/room/<room_id>?github_login=player2&github_id=2
 {"type":"act_submit_questions","payload":{"my_questions":[{"difficulty":"Easy","question_text":"Q1","choices":["A","B","C","D"],"correct_answer":"A","tips":"tip"},{"difficulty":"Hard","question_text":"Q2","choices":["A","B","C","D"],"correct_answer":"B","tips":"tip"}],"for_opponent":[{"difficulty":"Easy","question_text":"Q3","choices":["A","B","C","D"],"correct_answer":"C","tips":"tip"},{"difficulty":"Normal","question_text":"Q4","choices":["A","B","C","D"],"correct_answer":"D","tips":"tip"}]}}
 ```
 
+**ベット送信（任意、`ev_turn_start` 受信後）:**
+```json
+{"type":"act_bet_gnu","payload":{"amount":50}}
+```
+
 **回答送信（T4・T5 両方、`ev_turn_start` ごとに4回）:**
 ```json
 {"type":"act_submit_answer","payload":{"choice_index":0,"time_ms":3000}}
 ```
-
-### 確認済みの動作結果
-
-| 確認項目 | 結果 |
-|---|---|
-| `ev_room_ready` に opponent 情報・gnu_balance が含まれる | ✅ |
-| `ev_turn_start` が4ターン、各プレイヤーに異なる問題で届く | ✅ |
-| `ev_turn_result` に正解判定・gnu増減・相手の結果が含まれる | ✅ |
-| タイムアウト時は `your_answer: -1`・不正解扱い | ✅ |
-| 正解時に `gnu_delta: +100`・`your_gnu_balance` が増加 | ✅ |
-| `ev_game_end` に勝敗・正解数・最終 gnu_balance が含まれる | ✅ |
-| 勝者に `result: "win"`、敗者に `result: "lose"` が届く | ✅ |
 
 ### 注意事項
 

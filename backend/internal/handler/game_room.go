@@ -19,6 +19,7 @@ const (
 	questionWaitLimit = 60 * time.Second
 	baseGnuPerCorrect = 100
 	tkoBonus          = 300
+	minBet            = 0 // ベット額の最小値（0 = ノーリスク）
 )
 
 // QuestionSet はフロントエンドが送信する問題セット
@@ -207,9 +208,11 @@ func (r *GameRoom) run(ctx context.Context) {
 			r.notifyOpponentDisconnect(idx)
 			return
 		case <-ctx.Done():
-			return
 		case msg := <-r.msgCh:
 			if msg.msgType != "act_submit_questions" {
+				continue
+			}
+			if questionsDone[msg.idx] {
 				continue
 			}
 			var qs submitQuestionsPayload
@@ -226,6 +229,29 @@ func (r *GameRoom) run(ctx context.Context) {
 						"message": "my_questions と for_opponent はそれぞれ2問必要です",
 					},
 				})
+				continue
+			}
+			r.players[msg.idx].questions = &QuestionSet{
+				MyQuestions: qs.MyQuestions,
+				ForOpponent: qs.ForOpponent,
+			}
+			questionsDone[msg.idx] = true
+			log.Printf("game room %s: player[%d] submitted questions", r.id, msg.idx)
+			for _, q := range allQs {
+				if err := q.Validate(); err != nil {
+					log.Printf("game room %s: player[%d] invalid question: %v", r.id, msg.idx, err)
+					r.players[msg.idx].send(WSMessage{
+						Type: "ev_error",
+						Payload: map[string]any{
+							"code":    "invalid_questions",
+							"message": err.Error(),
+						},
+					})
+					valid = false
+					break
+				}
+			}
+			if !valid {
 				continue
 			}
 			r.players[msg.idx].questions = &QuestionSet{
@@ -278,6 +304,8 @@ func (r *GameRoom) run(ctx context.Context) {
 					"choices":          q.Choices,
 					"time_limit_sec":   15,
 					"your_gnu_balance": p.gnuBalance,
+					"min_bet":          minBet,
+					"max_bet":          p.gnuBalance,
 				},
 			})
 		}
@@ -302,18 +330,35 @@ func (r *GameRoom) run(ctx context.Context) {
 			case msg := <-r.msgCh:
 				switch msg.msgType {
 				case "act_bet_gnu":
+					if answered[msg.idx] {
+						continue // 回答後のベット変更は禁止
+					}
 					var bp betPayload
 					if err := json.Unmarshal(msg.payload, &bp); err != nil {
 						continue
 					}
 					maxBet := r.players[msg.idx].gnuBalance
-					if bp.Amount < 0 {
-						bp.Amount = 0
-					}
-					if bp.Amount > maxBet {
-						bp.Amount = maxBet
+					if bp.Amount < minBet || bp.Amount > maxBet {
+						r.players[msg.idx].send(WSMessage{
+							Type: "ev_error",
+							Payload: map[string]any{
+								"code":    "invalid_bet",
+								"message": fmt.Sprintf("ベット額は %d 以上 %d 以下で指定してください", minBet, maxBet),
+								"min_bet": minBet,
+								"max_bet": maxBet,
+							},
+						})
+						continue
 					}
 					bets[msg.idx] = bp.Amount
+					r.players[msg.idx].send(WSMessage{
+						Type: "ev_bet_confirmed",
+						Payload: map[string]any{
+							"amount":  bp.Amount,
+							"min_bet": minBet,
+							"max_bet": maxBet,
+						},
+					})
 					log.Printf("game room %s: player[%d] bet %d gnu", r.id, msg.idx, bp.Amount)
 
 				case "act_submit_answer":
