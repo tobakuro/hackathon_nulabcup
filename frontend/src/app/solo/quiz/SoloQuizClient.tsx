@@ -2,17 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { QuizQuestion } from "@/app/actions/quiz";
+import {
+  applyIncorrectRetryResult,
+  saveQuizHistoryResult,
+  type Difficulty,
+  type QuestionResultRecord,
+  type QuizPayload,
+} from "@/lib/soloQuizHistory";
 
-interface QuizPayload {
-  quizzes: QuizQuestion[];
-  repoFullName: string;
-  difficulty: "easy" | "normal" | "hard";
-  questionCount: 5 | 10 | 15;
-  createdAt: number;
-}
-
-function formatDifficultyLabel(value: QuizPayload["difficulty"]): string {
+function formatDifficultyLabel(value: Difficulty): string {
   if (value === "easy") return "かんたん";
   if (value === "normal") return "ふつう";
   return "むずかしい";
@@ -24,6 +22,8 @@ export default function SoloQuizClient() {
   const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
+  const [questionResults, setQuestionResults] = useState<QuestionResultRecord[]>([]);
+  const [isResultSaved, setIsResultSaved] = useState(false);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("solo_quiz_payload");
@@ -49,6 +49,34 @@ export default function SoloQuizClient() {
     selectedAnswerIndex !== null &&
     selectedAnswerIndex === currentQuiz.answerIndex;
 
+  useEffect(() => {
+    if (!payload || !isFinished || isResultSaved) return;
+    const result = {
+      correctCount,
+      totalCount: quizzes.length,
+      completedAt: Date.now(),
+      questionResults,
+    };
+
+    if (payload.retryContext?.mode === "all") {
+      setIsResultSaved(true);
+      return;
+    }
+
+    if (payload.retryContext?.mode === "incorrect") {
+      applyIncorrectRetryResult(
+        payload.retryContext.sourceHistoryId,
+        payload.retryContext.originalQuestionIndexes,
+        questionResults,
+      );
+      setIsResultSaved(true);
+      return;
+    }
+
+    saveQuizHistoryResult(payload, result);
+    setIsResultSaved(true);
+  }, [correctCount, isFinished, isResultSaved, payload, questionResults, quizzes.length]);
+
   function handleAnswerSelect(index: number) {
     if (showAnswer || !currentQuiz) return;
     setSelectedAnswerIndex(index);
@@ -56,9 +84,19 @@ export default function SoloQuizClient() {
 
   function handleConfirmAnswer() {
     if (!currentQuiz || selectedAnswerIndex === null || showAnswer) return;
-    if (selectedAnswerIndex === currentQuiz.answerIndex) {
+    const isCorrect = selectedAnswerIndex === currentQuiz.answerIndex;
+    if (isCorrect) {
       setCorrectCount((count) => count + 1);
     }
+
+    setQuestionResults((records) => [
+      ...records,
+      {
+        questionIndex: currentQuestionIndex,
+        selectedAnswerIndex,
+        isCorrect,
+      },
+    ]);
     setShowAnswer(true);
   }
 
@@ -97,7 +135,7 @@ export default function SoloQuizClient() {
         </p>
         <div className="mt-4 flex items-center gap-4">
           <Link href="/solo" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
-            設定へ戻る
+            1人プレイへ戻る
           </Link>
         </div>
       </div>
