@@ -22,7 +22,11 @@ export function useWebSocket({ url, onMessage }: UseWebSocketOptions): UseWebSoc
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
 
+  // StrictMode で2回マウントされても閉じないためのフラグ
+  const intentionalCloseRef = useRef(false);
+
   const close = useCallback(() => {
+    intentionalCloseRef.current = true;
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -31,10 +35,16 @@ export function useWebSocket({ url, onMessage }: UseWebSocketOptions): UseWebSoc
   }, []);
 
   const connect = useCallback(() => {
-    if (wsRef.current) {
-      wsRef.current.close();
+    // 既に接続中・接続済みなら何もしない
+    if (
+      wsRef.current &&
+      (wsRef.current.readyState === WebSocket.CONNECTING ||
+        wsRef.current.readyState === WebSocket.OPEN)
+    ) {
+      return;
     }
 
+    intentionalCloseRef.current = false;
     setStatus("connecting");
     const ws = new WebSocket(url);
 
@@ -59,7 +69,10 @@ export function useWebSocket({ url, onMessage }: UseWebSocketOptions): UseWebSoc
     ws.onclose = () => {
       if (wsRef.current === ws) {
         wsRef.current = null;
-        setStatus((prev) => (prev === "error" ? "error" : "disconnected"));
+        // 意図しない切断のみ状態を更新
+        if (!intentionalCloseRef.current) {
+          setStatus((prev) => (prev === "error" ? "error" : "disconnected"));
+        }
       }
     };
 
@@ -72,8 +85,10 @@ export function useWebSocket({ url, onMessage }: UseWebSocketOptions): UseWebSoc
     }
   }, []);
 
+  // アンマウント時のみ閉じる（StrictMode の一時アンマウントでは閉じない）
   useEffect(() => {
     return () => {
+      // クリーンアップは意図的 close として扱わない（再マウント時に再接続できるよう）
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
