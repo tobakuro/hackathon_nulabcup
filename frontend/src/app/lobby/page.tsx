@@ -6,7 +6,7 @@ export default async function LobbyPage() {
   const session = await auth();
 
   if (!session?.user) {
-    redirect("/");
+    redirect("/auth");
   }
 
   return (

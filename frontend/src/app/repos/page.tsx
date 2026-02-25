@@ -9,7 +9,7 @@ export default async function ReposPage() {
 
   // 未ログインの場合はトップページにリダイレクト
   if (!session || !session.accessToken) {
-    redirect("/");
+    redirect("/auth");
   }
 
   // GitHub APIから自身のリポジトリ一覧を取得

@@ -10,7 +10,7 @@ export default async function RoomPage({ params }: RoomPageProps) {
   const session = await auth();
 
   if (!session?.user) {
-    redirect("/");
+    redirect("/auth");
   }
 
   const { roomId } = await params;
