@@ -54,6 +54,7 @@ export default function RepoManager({ loadedRepos: initialLoaded, unloadedRepos:
     const [loadStep, setLoadStep] = useState<string>("");
     const [loadProgress, setLoadProgress] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
 
     // 未読み取りリポジトリの読み取り
     const handleLoad = async (repo: GitHubRepo) => {
@@ -174,54 +175,148 @@ export default function RepoManager({ loadedRepos: initialLoaded, unloadedRepos:
                     </div>
                 ) : (
                     <div className="flex flex-col gap-3">
-                        {loadedRepos.map((repo) => (
-                            <div
-                                key={repo.id}
-                                className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow duration-200"
-                            >
-                                <div className="flex items-center justify-between p-4">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 shrink-0">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-emerald-600 dark:text-emerald-400"><line x1="6" x2="6" y1="3" y2="15" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="M18 9a9 9 0 0 1-9 9" /></svg>
+                        {loadedRepos.map((repo) => {
+                            const isExpanded = expandedId === repo.id;
+                            const report = repo.summaryJson;
+                            return (
+                                <div
+                                    key={repo.id}
+                                    className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden"
+                                >
+                                    {/* ヘッダー行（クリックで展開） */}
+                                    <div
+                                        className="flex items-center justify-between p-4 cursor-pointer select-none"
+                                        onClick={() => setExpandedId(isExpanded ? null : repo.id)}
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 shrink-0">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-emerald-600 dark:text-emerald-400"><line x1="6" x2="6" y1="3" y2="15" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="M18 9a9 9 0 0 1-9 9" /></svg>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium text-zinc-900 dark:text-white truncate">{repo.fullName}</p>
+                                                {!isExpanded && report?.summary && (
+                                                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400 line-clamp-1">{report.summary}</p>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-medium text-zinc-900 dark:text-white truncate">{repo.fullName}</p>
-                                            {repo.summaryJson?.summary && (
-                                                <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400 line-clamp-1">{repo.summaryJson.summary}</p>
+                                        <div className="flex items-center gap-3 shrink-0 ml-3">
+                                            <span className="px-2.5 py-0.5 text-[10px] font-medium rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                                                読み取り済み
+                                            </span>
+                                            {loadingId === repo.id ? (
+                                                <div className="flex flex-col gap-1 w-28" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-linear-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 ease-out"
+                                                            style={{ width: `${loadProgress}%` }}
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                                                        <div className="w-3 h-3 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                                                        <span className="truncate">{loadStep}</span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleReload(repo); }}
+                                                    disabled={loadingId !== null}
+                                                    className="px-3 py-1.5 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 hover:border-blue-300 dark:hover:border-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-1"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" /></svg>
+                                                    再読み込み
+                                                </button>
+                                            )}
+                                            {/* 展開アイコン */}
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                                className={`w-4 h-4 text-zinc-400 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                                            ><path d="m6 9 6 6 6-6" /></svg>
+                                        </div>
+                                    </div>
+
+                                    {/* 展開コンテンツ */}
+                                    {isExpanded && report && (
+                                        <div className="border-t border-zinc-100 dark:border-zinc-800 px-4 pb-4 pt-3 flex flex-col gap-4">
+                                            {/* プロジェクト概要 */}
+                                            <div>
+                                                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
+                                                    プロジェクト概要
+                                                </h4>
+                                                <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                                                    {report.summary}
+                                                </p>
+                                            </div>
+
+                                            {/* アーキテクチャ */}
+                                            {report.architecture && (
+                                                <div>
+                                                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
+                                                        アーキテクチャ・設計
+                                                    </h4>
+                                                    <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                                                        {report.architecture}
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* 使用技術 */}
+                                            {report.technologies && report.technologies.length > 0 && (
+                                                <div>
+                                                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
+                                                        使用技術
+                                                    </h4>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                        {report.technologies.map((tech, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-100 dark:border-zinc-700"
+                                                            >
+                                                                <div className="flex items-center justify-between gap-2 mb-1">
+                                                                    <span className="font-semibold text-xs text-blue-700 dark:text-blue-300">
+                                                                        {tech.name}
+                                                                    </span>
+                                                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 truncate">
+                                                                        {tech.purpose}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2">
+                                                                    {tech.implementation}
+                                                                </p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* 解析対象ファイル */}
+                                            {report.analyzedFiles && report.analyzedFiles.length > 0 && (
+                                                <div>
+                                                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
+                                                        解析対象ファイル ({report.analyzedFiles.length})
+                                                    </h4>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {report.analyzedFiles.map((file, idx) => (
+                                                            <span
+                                                                key={idx}
+                                                                className="px-2 py-0.5 text-[10px] font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-md border border-zinc-200 dark:border-zinc-700"
+                                                            >
+                                                                {file}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             )}
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 shrink-0 ml-3">
-                                        <span className="px-2.5 py-0.5 text-[10px] font-medium rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
-                                            読み取り済み
-                                        </span>
-                                        {loadingId === repo.id ? (
-                                            <div className="flex flex-col gap-1 w-28">
-                                                <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-linear-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 ease-out"
-                                                        style={{ width: `${loadProgress}%` }}
-                                                    />
-                                                </div>
-                                                <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
-                                                    <div className="w-3 h-3 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
-                                                    <span className="truncate">{loadStep}</span>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <button
-                                                onClick={() => handleReload(repo)}
-                                                disabled={loadingId !== null}
-                                                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 hover:border-blue-300 dark:hover:border-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-1"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" /></svg>
-                                                再読み込み
-                                            </button>
-                                        )}
-                                    </div>
+                                    )}
+
+                                    {isExpanded && !report && (
+                                        <div className="border-t border-zinc-100 dark:border-zinc-800 p-4 text-center text-sm text-zinc-400 dark:text-zinc-500 italic">
+                                            解析データがありません。「再読み込み」で取得してください。
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </section>
