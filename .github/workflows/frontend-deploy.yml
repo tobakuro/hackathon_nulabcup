@@ -1,0 +1,160 @@
+name: Frontend Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup devbox
+        uses: jetify-com/devbox-install-action@v0.12.0
+        with:
+          enable-cache: true
+
+      - name: Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
+      - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: devbox run -- sh -c "cd frontend && npm ci"
+
+      - name: Format check
+        run: devbox run -- sh -c "cd frontend && npm run format:check"
+
+      - name: Lint
+        run: devbox run -- sh -c "cd frontend && npm run lint"
+
+      - name: Type check
+        run: devbox run -- sh -c "cd frontend && npm run typecheck"
+
+      - name: Test
+        run: devbox run -- sh -c "cd frontend && npm run test"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Next.js (standalone)
+        working-directory: frontend
+        env:
+          # Provide build-time env vars (NEXT_PUBLIC_*)
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_WS_URL: ${{ secrets.NEXT_PUBLIC_WS_URL }}
+        run: npm run build
+
+      - name: Package standalone build
+        working-directory: frontend
+        run: |
+          # standalone output contains server.js + node_modules subset
+          mkdir -p dist
+          cp -r .next/standalone/. dist/
+          # static assets and public files must be copied manually
+          cp -r .next/static dist/.next/static
+          cp -r public dist/public 2>/dev/null || true
+          # Include drizzle config and migrations for DB migration on deploy
+          cp drizzle.config.ts dist/ 2>/dev/null || true
+          cp -r drizzle dist/drizzle 2>/dev/null || true
+          cp -r src/db dist/src/db 2>/dev/null || true
+          # Create archive for transfer
+          tar -czf frontend-standalone.tar.gz -C dist .
+
+      - name: Install cloudflared
+        run: |
+          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb
+          sudo dpkg -i cloudflared.deb
+
+      - name: Setup SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          RASPI_KNOWN_HOSTS: ${{ secrets.RASPI_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "$RASPI_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+
+      - name: Transfer build to Raspberry Pi
+        env:
+          RASPI_HOST: ${{ secrets.RASPI_HOST }}
+          RASPI_USER: ${{ secrets.RASPI_USER }}
+          CF_CLIENT_ID: ${{ secrets.CF_CLIENT_ID }}
+          CF_CLIENT_SECRET: ${{ secrets.CF_CLIENT_SECRET }}
+        run: |
+          scp -o ProxyCommand="cloudflared access ssh --hostname $RASPI_HOST --id $CF_CLIENT_ID --secret $CF_CLIENT_SECRET" \
+            -i ~/.ssh/id_ed25519 \
+            frontend/frontend-standalone.tar.gz \
+            "$RASPI_USER@$RASPI_HOST:/opt/frontend/frontend-standalone.tar.gz"
+
+      - name: Deploy & restart service
+        env:
+          RASPI_HOST: ${{ secrets.RASPI_HOST }}
+          RASPI_USER: ${{ secrets.RASPI_USER }}
+          CF_CLIENT_ID: ${{ secrets.CF_CLIENT_ID }}
+          CF_CLIENT_SECRET: ${{ secrets.CF_CLIENT_SECRET }}
+        run: |
+          ssh \
+            -o ProxyCommand="cloudflared access ssh --hostname $RASPI_HOST --id $CF_CLIENT_ID --secret $CF_CLIENT_SECRET" \
+            -i ~/.ssh/id_ed25519 \
+            "$RASPI_USER@$RASPI_HOST" \
+            'set -e
+            cd /opt/frontend
+            # Back up current deployment
+            rm -rf app.bak
+            [ -d app ] && mv app app.bak
+            # Extract new build
+            mkdir app
+            tar -xzf frontend-standalone.tar.gz -C app
+            rm frontend-standalone.tar.gz
+            # Run drizzle migrations
+            cd app
+            DATABASE_URL=$(systemctl --user show-environment 2>/dev/null | grep DATABASE_URL= | cut -d= -f2- || true)
+            if [ -z "$DATABASE_URL" ]; then
+              DATABASE_URL=$(grep -oP "(?<=Environment=DATABASE_URL=).*" ~/.config/systemd/user/frontend.service 2>/dev/null || true)
+            fi
+            if [ -n "$DATABASE_URL" ]; then
+              echo "Running drizzle migrations..."
+              DATABASE_URL="$DATABASE_URL" npx drizzle-kit migrate 2>&1 || echo "Migration skipped or failed (non-fatal)"
+            else
+              echo "DATABASE_URL not found, skipping migrations"
+            fi
+            cd /opt/frontend
+            # Restart service
+            systemctl --user restart frontend.service
+            for i in $(seq 1 30); do
+              if systemctl --user is-active --quiet frontend.service; then
+                echo "Frontend service started successfully."
+                exit 0
+              fi
+              sleep 1
+            done
+            echo "Frontend service failed to start!" >&2
+            journalctl --user -u frontend.service --no-pager -n 30 >&2
+            # Rollback
+            rm -rf app
+            [ -d app.bak ] && mv app.bak app
+            systemctl --user restart frontend.service
+            exit 1'
