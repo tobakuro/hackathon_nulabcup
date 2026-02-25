@@ -15,7 +15,7 @@ on:
       - "devbox.lock"
 
 jobs:
-  ci:
+  install:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,17 +26,51 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
       - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: devbox run -- sh -c "cd frontend && npm ci"
 
-      - name: Format check
-        run: devbox run -- sh -c "cd frontend && npm run format:check"
+  checks:
+    needs: install
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        check:
+          - name: Format check
+            script: format:check
+          - name: Lint
+            script: lint
+          - name: Type check
+            script: typecheck
+          - name: Build
+            script: build
 
-      - name: Lint
-        run: devbox run -- sh -c "cd frontend && npm run lint"
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Type check
-        run: devbox run -- sh -c "cd frontend && npm run typecheck"
+      - name: Setup devbox
+        uses: jetify-com/devbox-install-action@v0.12.0
+        with:
+          enable-cache: true
 
-      - name: Build
-        run: devbox run -- sh -c "cd frontend && npm run build"
+      - name: Restore node_modules
+        id: cache-node-modules
+        uses: actions/cache/restore@v4
+        with:
+          path: frontend/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
+      - name: Install dependencies (cache miss fallback)
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: devbox run -- sh -c "cd frontend && npm ci"
+
+      - name: ${{ matrix.check.name }}
+        run: devbox run -- sh -c "cd frontend && npm run ${{ matrix.check.script }}"
