@@ -1,5 +1,29 @@
-import { pgTable, text, timestamp, varchar, jsonb, uuid, index } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  varchar,
+  jsonb,
+  uuid,
+  index,
+  integer,
+  bigint,
+} from "drizzle-orm/pg-core";
 import { type AIAnalysisReport } from "../app/actions/github";
+
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  githubId: bigint("github_id", { mode: "number" }).unique().notNull(),
+  githubLogin: varchar("github_login", { length: 255 }).notNull(),
+  gnuBalance: integer("gnu_balance").notNull().default(1000),
+  rate: integer("rate").notNull().default(1500),
+  encryptedToken: text("encrypted_token").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
 
 export const repositories = pgTable("repositories", {
   id: uuid("id").primaryKey().defaultRandom(),
