@@ -96,18 +96,14 @@ jobs:
       - name: コンテナ状態を確認
         working-directory: raspi
         run: |
-          sleep 5
+          sleep 10
           podman compose ps
           # 全コンテナが running であることを確認
-          podman compose ps --format json | python3 -c "
-          import sys, json
-          data = json.load(sys.stdin)
-          if not isinstance(data, list):
-              data = [data]
-          failed = [c['Name'] for c in data if c.get('State') != 'running']
-          if failed:
-              print('以下のコンテナが running ではありません:', file=sys.stderr)
-              print('\n'.join(failed), file=sys.stderr)
-              sys.exit(1)
-          print('全コンテナが正常に稼働しています')
-          "
+          podman ps --format "{{.Names}} {{.Status}}" | while read name status; do
+            if echo "$status" | grep -qv "Up"; then
+              echo "コンテナ ${name} が running ではありません: ${status}" >&2
+              podman logs "$name" --tail=30 >&2
+              exit 1
+            fi
+          done
+          echo "全コンテナが正常に稼働しています"
