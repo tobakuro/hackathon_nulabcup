@@ -76,7 +76,11 @@ jobs:
 
       - name: 既存コンテナを停止
         working-directory: raspi
-        run: podman compose down || true
+        run: |
+          podman compose down || true
+          # 旧プロジェクト名のコンテナや競合ポートを使うコンテナも停止
+          podman ps -q | xargs -r podman stop || true
+          podman ps -aq | xargs -r podman rm -f || true
 
       - name: コンテナイメージをビルド
         working-directory: raspi
