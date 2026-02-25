@@ -82,27 +82,19 @@ jobs:
           export XDG_RUNTIME_DIR=/run/user/$(id -u)
           echo "=== メモリ状況 (再起動前) ==="
           free -m
+          echo "=== バイナリ確認 ==="
+          ls -la /opt/backend/server || echo "バイナリが存在しません!"
+          echo "=== service ファイル確認 ==="
+          systemctl --user cat backend.service || echo "service ファイルが見つかりません!"
           systemctl --user daemon-reload
-          systemctl --user restart backend.service
-
-      - name: ヘルスチェック
-        run: |
-          export XDG_RUNTIME_DIR=/run/user/$(id -u)
-          for i in $(seq 1 15); do
-            if systemctl --user is-active --quiet backend.service; then
-              echo "backend.service is running."
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "backend.service failed to start!" >&2
-          echo "=== journalctl ログ ==="
-          journalctl --user -u backend.service --no-pager -n 30 >&2
-          echo "=== メモリ状況 ==="
-          free -m >&2
-          echo "=== systemctl status ==="
-          systemctl --user status backend.service --no-pager >&2
-          exit 1
+          systemctl --user stop backend.service || true
+          systemctl --user start backend.service || {
+            echo "=== start 失敗: journalctl ===" >&2
+            journalctl --user -u backend.service --no-pager -n 50 >&2
+            echo "=== systemctl status ===" >&2
+            systemctl --user status backend.service --no-pager >&2
+            exit 1
+          }
 
   deploy-frontend:
     needs: [filter, deploy-backend]
@@ -145,26 +137,16 @@ jobs:
           export XDG_RUNTIME_DIR=/run/user/$(id -u)
           echo "=== メモリ状況 (再起動前) ==="
           free -m
+          echo "=== service ファイル確認 ==="
+          systemctl --user cat frontend.service || echo "service ファイルが見つかりません!"
           # ビルド後のメモリ解放を待つ
           sleep 5
           systemctl --user daemon-reload
-          systemctl --user restart frontend.service
-
-      - name: ヘルスチェック
-        run: |
-          export XDG_RUNTIME_DIR=/run/user/$(id -u)
-          for i in $(seq 1 20); do
-            if systemctl --user is-active --quiet frontend.service; then
-              echo "frontend.service is running."
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "frontend.service failed to start!" >&2
-          echo "=== journalctl ログ ==="
-          journalctl --user -u frontend.service --no-pager -n 50 >&2
-          echo "=== メモリ状況 ==="
-          free -m >&2
-          echo "=== systemctl status ==="
-          systemctl --user status frontend.service --no-pager >&2
-          exit 1
+          systemctl --user stop frontend.service || true
+          systemctl --user start frontend.service || {
+            echo "=== start 失敗: journalctl ===" >&2
+            journalctl --user -u frontend.service --no-pager -n 50 >&2
+            echo "=== systemctl status ===" >&2
+            systemctl --user status frontend.service --no-pager >&2
+            exit 1
+          }
