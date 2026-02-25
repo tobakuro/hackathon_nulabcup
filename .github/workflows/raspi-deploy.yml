@@ -31,7 +31,7 @@ jobs:
   deploy-backend:
     needs: filter
     if: needs.filter.outputs.backend == 'true'
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on: [self-hosted, Linux, ARM64, raspi]
     steps:
       - uses: actions/checkout@v4
 
@@ -98,7 +98,7 @@ jobs:
   deploy-frontend:
     needs: filter
     if: needs.filter.outputs.frontend == 'true'
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on: [self-hosted, Linux, ARM64, raspi]
     steps:
       - uses: actions/checkout@v4
 
