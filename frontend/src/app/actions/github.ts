@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { db } from "../../db/index";
 import { repositories, repositoryFiles } from "../../db/schema";
 import { eq } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 
 import { GoogleGenAI } from "@google/genai";
 
@@ -341,5 +342,43 @@ export async function getRepoDependencies(
   } catch (e) {
     console.error("AI Analysis failed:", e);
     return null;
+  }
+}
+
+/**
+ * DBに保存済みのリポジトリ情報の型
+ */
+export interface LoadedRepository {
+  id: string;
+  owner: string;
+  name: string;
+  fullName: string;
+  summaryJson: AIAnalysisReport | null;
+  updatedAt: Date;
+}
+
+/**
+ * Server Action: DBに保存済み（読み取り済み）のリポジトリ一覧を取得する
+ */
+export async function getLoadedRepositories(): Promise<LoadedRepository[]> {
+  await auth(); // 認証チェック
+
+  try {
+    const rows = await db
+      .select({
+        id: repositories.id,
+        owner: repositories.owner,
+        name: repositories.name,
+        fullName: repositories.fullName,
+        summaryJson: repositories.summaryJson,
+        updatedAt: repositories.updatedAt,
+      })
+      .from(repositories)
+      .orderBy(desc(repositories.updatedAt));
+
+    return rows as LoadedRepository[];
+  } catch (error) {
+    console.error("Failed to fetch loaded repositories from DB:", error);
+    return [];
   }
 }

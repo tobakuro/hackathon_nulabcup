@@ -1,9 +1,11 @@
 import { auth } from "@/auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import RepoSelector from "@/components/RepoSelector";
+import RepoManager from "@/components/RepoManager";
+import { getLoadedRepositories } from "@/app/actions/github";
 
 import type { GitHubRepo } from "@/types/github";
+
 export default async function ReposPage() {
   const session = await auth();
 
@@ -49,55 +51,43 @@ export default async function ReposPage() {
     );
   }
 
-  const repos: GitHubRepo[] = await res.json();
+  const allGitHubRepos: GitHubRepo[] = await res.json();
+
+  // DBから読み取り済みリポジトリを取得
+  const loadedRepos = await getLoadedRepositories();
+  const loadedFullNames = new Set(loadedRepos.map((r) => r.fullName));
+
+  // 未読み取り = GitHub上にあるがDBに未登録
+  const unloadedRepos = allGitHubRepos.filter((r) => !loadedFullNames.has(r.full_name));
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black overflow-hidden relative p-4">
+    <div className="flex min-h-screen flex-col bg-zinc-50 font-sans dark:bg-black overflow-hidden relative">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-32 -right-32 w-80 h-80 bg-linear-to-br from-blue-400/20 to-purple-500/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-linear-to-tr from-emerald-400/20 to-cyan-500/20 rounded-full blur-3xl animate-pulse [animation-delay:2s]" />
       </div>
 
-      <main className="relative z-10 flex flex-col items-center gap-6 w-full max-w-2xl">
-        {/* Header */}
-        <div className="flex flex-col items-center gap-2">
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            📦 リポジトリ分析
-          </h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">リポジトリを選んでAI解析を実行</p>
+      {/* Header */}
+      <header className="relative z-10 flex items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 px-4 py-3 md:px-6 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm">
+        <Link
+          href="/lobby"
+          className="flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="m15 18-6-6 6-6" /></svg>
+          戻る
+        </Link>
+        <div className="flex items-center gap-2">
+          <span className="text-lg">📦</span>
+          <h1 className="text-lg font-bold text-zinc-900 dark:text-white">リポジトリ管理</h1>
         </div>
+      </header>
 
-        {/* Main Card */}
-        <div className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-2xl shadow-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-          {/* User Info Bar */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              <span className="font-medium text-zinc-900 dark:text-white">
-                {session.user?.name}
-              </span>{" "}
-              のリポジトリ
-            </p>
-            <Link
-              href="/lobby"
-              className="px-4 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all duration-200"
-            >
-              ← 戻る
-            </Link>
-          </div>
-
-          {/* Content */}
-          <div className="p-6">
-            {repos.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-12">
-                <span className="text-4xl">📭</span>
-                <p className="text-zinc-500 dark:text-zinc-400">リポジトリが見つかりません。</p>
-              </div>
-            ) : (
-              <RepoSelector repos={repos} />
-            )}
-          </div>
-        </div>
+      <main className="relative z-10 flex flex-1 flex-col gap-8 px-4 py-6 md:px-6 max-w-4xl mx-auto w-full">
+        <RepoManager
+          loadedRepos={loadedRepos}
+          unloadedRepos={unloadedRepos}
+        />
       </main>
     </div>
   );
