@@ -94,7 +94,7 @@ export default async function ReposPage() {
                 <p className="text-zinc-500 dark:text-zinc-400">リポジトリが見つかりません。</p>
               </div>
             ) : (
-              <RepoSelector repos={repos} accessToken={session.accessToken} />
+              <RepoSelector repos={repos} />
             )}
           </div>
         </div>

@@ -4,13 +4,7 @@ import { useState } from "react";
 import type { GitHubRepo } from "@/types/github";
 import { getRepoLanguages, getRepoDependencies, AIAnalysisReport } from "@/app/actions/github";
 
-export default function RepoSelector({
-  repos,
-  accessToken,
-}: {
-  repos: GitHubRepo[];
-  accessToken: string;
-}) {
+export default function RepoSelector({ repos }: { repos: GitHubRepo[] }) {
   const [selectedRepoFullName, setSelectedRepoFullName] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +27,8 @@ export default function RepoSelector({
     try {
       const [owner, repo] = selectedRepoFullName.split("/");
       const [langs, report] = await Promise.all([
-        getRepoLanguages(owner, repo, accessToken),
-        getRepoDependencies(owner, repo, selectedRepo.default_branch, accessToken),
+        getRepoLanguages(owner, repo),
+        getRepoDependencies(owner, repo, selectedRepo.default_branch),
       ]);
 
       const totalBytes = Object.values(langs).reduce((sum, bytes) => sum + bytes, 0);
