@@ -183,7 +183,7 @@ export default function RepoManager({
                   {/* ヘッダー行（クリックで展開） */}
                   <button
                     type="button"
-                    className="w-full flex items-center justify-between p-4 cursor-pointer select-none text-left"
+                    className="flex items-center justify-between p-4 cursor-pointer select-none w-full text-left"
                     onClick={() => setExpandedId(isExpanded ? null : repo.id)}
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -221,6 +221,7 @@ export default function RepoManager({
                       </span>
                       {loadingId === repo.id ? (
                         <div
+                          role="presentation"
                           className="flex flex-col gap-1 w-28"
                           role="presentation"
                           onClick={(e) => e.stopPropagation()}

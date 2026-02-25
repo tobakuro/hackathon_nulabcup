@@ -5,14 +5,14 @@ export default function Home() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 font-sans dark:bg-black overflow-hidden relative">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-linear-to-br from-blue-400/20 to-purple-500/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-linear-to-br from-red-400/20 to-rose-500/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-linear-to-tr from-emerald-400/20 to-cyan-500/20 rounded-full blur-3xl animate-pulse [animation-delay:2s]" />
       </div>
 
       <main className="relative z-10 flex flex-col items-center gap-10 px-6 text-center max-w-2xl">
         {/* Logo / Title */}
         <div className="flex flex-col items-center gap-4">
-          <div className="w-20 h-20 rounded-2xl bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+          <div className="w-20 h-20 rounded-2xl bg-linear-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg shadow-red-500/25">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -58,7 +58,7 @@ export default function Home() {
         {/* CTA Button */}
         <Link
           href="/auth"
-          className="inline-flex items-center gap-2 px-8 py-3.5 bg-linear-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-105 transition-all duration-200"
+          className="inline-flex items-center gap-2 px-8 py-3.5 bg-linear-to-r from-red-600 to-rose-600 text-white font-semibold rounded-xl shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:scale-105 transition-all duration-200"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

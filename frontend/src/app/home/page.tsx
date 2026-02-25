@@ -2,6 +2,7 @@ import { auth, signOut } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { getLoadedRepositories } from "@/app/actions/github";
 
 export default async function HomePage() {
   const session = await auth();
@@ -10,19 +11,25 @@ export default async function HomePage() {
     redirect("/auth");
   }
 
+  // 読み取り済みリポジトリがない場合はセットアップ画面へ
+  const loadedRepos = await getLoadedRepositories();
+  if (loadedRepos.length === 0) {
+    redirect("/setup");
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black overflow-hidden relative">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-linear-to-br from-blue-400/20 to-purple-500/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-linear-to-br from-red-400/20 to-rose-500/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-linear-to-tr from-emerald-400/20 to-cyan-500/20 rounded-full blur-3xl animate-pulse [animation-delay:2s]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-linear-to-r from-purple-400/10 to-pink-400/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-linear-to-r from-red-400/10 to-rose-400/10 rounded-full blur-3xl" />
       </div>
 
       <main className="relative z-10 flex flex-col items-center gap-8 w-full max-w-xl px-6">
         {/* Header */}
         <div className="flex flex-col items-center gap-3">
-          <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+          <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg shadow-red-500/25">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -70,7 +77,7 @@ export default async function HomePage() {
             href="/lobby"
             className="group w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200 p-5 flex items-center gap-4"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br from-blue-500 to-purple-600 shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200 shrink-0">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br from-red-500 to-rose-600 shadow-md shadow-red-500/20 group-hover:scale-105 transition-transform duration-200 shrink-0">
               <span className="text-xl">🎮</span>
             </div>
             <div className="min-w-0">
@@ -116,6 +123,34 @@ export default async function HomePage() {
               strokeLinecap="round"
               strokeLinejoin="round"
               className="w-5 h-5 ml-auto text-zinc-300 dark:text-zinc-600 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all duration-200 shrink-0"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </Link>
+
+          {/* Code GeoGuessr */}
+          <Link
+            href="/code-quiz"
+            className="group w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-lg hover:border-sky-300 dark:hover:border-sky-700 transition-all duration-200 p-5 flex items-center gap-4"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br from-sky-500 to-blue-600 shadow-md shadow-sky-500/20 group-hover:scale-105 transition-transform duration-200 shrink-0">
+              <span className="text-xl">🗺️</span>
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-zinc-900 dark:text-white">Code GeoGuessr</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                コードの1行からファイルを当てるクイズ
+              </p>
+            </div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-5 h-5 ml-auto text-zinc-300 dark:text-zinc-600 group-hover:text-sky-500 group-hover:translate-x-0.5 transition-all duration-200 shrink-0"
             >
               <path d="m9 18 6-6-6-6" />
             </svg>

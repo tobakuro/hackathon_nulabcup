@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/playwright-report
+/test-results
 
 # next.js
 /.next/
@@ -36,6 +38,10 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# cloudflare
+.open-next
+.wrangler
 
 # typescript
 *.tsbuildinfo
