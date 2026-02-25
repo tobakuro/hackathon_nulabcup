@@ -20,8 +20,11 @@
 pre-commit:
   jobs:
     - name: lint
-      run: cd frontend && npm run lint -- --fix
-      glob: "*.{js,ts,jsx,tsx}"
+      run: cd frontend && npm run lint -- --fix {staged_files}
+      glob:
+        - "frontend/*.{js,ts,jsx,tsx}"
+        - "frontend/**/*.{js,ts,jsx,tsx}"
+      stage_fixed: true
 
     - name: fmt
       run: cd frontend && npm run format
