@@ -194,6 +194,9 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
   const [prepTimeLeft, setPrepTimeLeft] = useState(60);
   const prepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ターン開始アニメーション用タイムアウト
+  const turnAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // sendMessage を onMessage コールバック内から参照するための ref
   // （useWebSocket の戻り値を onMessage に直接渡すと循環参照になるため）
   const sendMessageRef = useRef<((msg: unknown) => void) | null>(null);
@@ -256,6 +259,7 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
     return () => {
       stopTimer();
       stopPrepTimer();
+      if (turnAnimTimerRef.current) clearTimeout(turnAnimTimerRef.current);
     };
   }, [stopTimer, stopPrepTimer]);
 
@@ -307,7 +311,8 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
             setTurnResult(null);
             setPhase("turn_start");
             // 短いアニメーション後に answering へ
-            setTimeout(() => {
+            if (turnAnimTimerRef.current) clearTimeout(turnAnimTimerRef.current);
+            turnAnimTimerRef.current = setTimeout(() => {
               setPhase("answering");
               startTimer(payload.time_limit_sec);
             }, 800);
@@ -348,12 +353,14 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
           case "ev_error": {
             const code = msg.payload.code as string;
             const message = msg.payload.message as string;
-            if (code === "opponent_disconnected") {
-              setErrorMsg("対戦相手が切断しました");
-              setPhase("error");
-            } else {
-              console.warn("[GameRoom] ev_error:", code, message);
-            }
+            stopTimer();
+            const errorMessages: Record<string, string> = {
+              opponent_disconnected: "対戦相手が切断しました",
+              question_timeout: "問題の準備時間が終了しました",
+              invalid_questions: "問題の形式が不正です",
+            };
+            setErrorMsg(errorMessages[code] ?? message ?? "エラーが発生しました");
+            setPhase("error");
             break;
           }
         }
@@ -409,14 +416,25 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
         const easy = batch.quizzes.filter((q) => q.difficulty === "Lv1");
         const normal = batch.quizzes.filter((q) => q.difficulty === "Lv2");
         const hard = batch.quizzes.filter((q) => q.difficulty === "Lv3");
-        // フォールバック: 不足難易度は他から補充
-        const pick = (arr: QuizQuestion[], fallback: QuizQuestion[]): QuizQuestion =>
-          (arr.length > 0 ? arr : fallback)[0];
+        // 使用済みインデックスを追跡して重複を防ぐ
         const all = batch.quizzes;
-        const myQ0 = pick(easy, all);
-        const myQ1 = pick(hard, all.slice(1));
-        const forOp0 = pick(easy.slice(1), all);
-        const forOp1 = pick(normal, all.slice(2));
+        const used = new Set<number>();
+        const pickUnused = (candidates: QuizQuestion[]): QuizQuestion => {
+          for (const q of candidates) {
+            const idx = all.indexOf(q);
+            if (!used.has(idx)) {
+              used.add(idx);
+              return q;
+            }
+          }
+          const fallback = all.find((_, i) => !used.has(i))!;
+          used.add(all.indexOf(fallback));
+          return fallback;
+        };
+        const myQ0 = pickUnused([...easy, ...all]);
+        const myQ1 = pickUnused([...hard, ...normal, ...easy, ...all]);
+        const forOp0 = pickUnused([...easy, ...all]);
+        const forOp1 = pickUnused([...normal, ...easy, ...hard, ...all]);
         sendMessage({
           type: "act_submit_questions",
           payload: {
@@ -704,7 +722,7 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
                 <span className="text-xs text-zinc-500 dark:text-zinc-400 shrink-0">0</span>
                 <input
                   type="range"
-                  min={0}
+                  min={currentTurn.min_bet}
                   max={currentTurn.max_bet}
                   value={betAmount}
                   onChange={(e) => {
@@ -926,10 +944,12 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
                 <div className="flex-1 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 text-center">
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">相手の正解数</p>
                   <p className="text-3xl font-black text-zinc-900 dark:text-white">
-                    {gameEnd.opponent_correct_count}
+                    {gameEnd.your_correct_count}
                     <span className="text-base font-normal text-zinc-400 dark:text-zinc-500">
                       {" "}
-                      / 4
+                      / {gameEnd.your_correct_count + (gameEnd.opponent_correct_count ?? 0) > 0
+                          ? turnHistory.length || 4
+                          : 4}
                     </span>
                   </p>
                 </div>
