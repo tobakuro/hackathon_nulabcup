@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getLoadedRepositories } from "@/app/actions/github";
 import SoloSettings from "@/components/SoloSettings";
+import SoloQuizHistoryPanel from "@/components/SoloQuizHistoryPanel";
 
 export default async function SoloPage() {
   const session = await auth();
@@ -21,7 +22,7 @@ export default async function SoloPage() {
         <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-linear-to-tr from-blue-400/20 to-cyan-500/20 rounded-full blur-3xl animate-pulse [animation-delay:2s]" />
       </div>
 
-      <main className="relative z-10 flex flex-col items-center gap-8 w-full max-w-lg px-6">
+      <main className="relative z-10 flex flex-col items-center gap-8 w-full max-w-lg px-6 py-8">
         {/* Header */}
         <div className="w-full flex items-center justify-between">
           <Link
@@ -52,6 +53,7 @@ export default async function SoloPage() {
         </div>
 
         <SoloSettings loadedRepos={loadedRepos} />
+        <SoloQuizHistoryPanel />
       </main>
     </div>
   );

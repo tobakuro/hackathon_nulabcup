@@ -5,9 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LoadedRepository } from "@/app/actions/github";
 import { generateQuizBatchAction, type SoloDifficulty } from "@/app/actions/quiz";
-
-type Difficulty = "easy" | "normal" | "hard";
-type QuestionCount = 5 | 10 | 15;
+import {
+  appendQuizHistory,
+  type Difficulty,
+  type QuestionCount,
+  type QuizPayload,
+} from "@/lib/soloQuizHistory";
 
 interface SoloSettingsProps {
   loadedRepos: LoadedRepository[];
@@ -61,16 +64,17 @@ export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
         return;
       }
 
-      sessionStorage.setItem(
-        "solo_quiz_payload",
-        JSON.stringify({
-          quizzes: generated.quizzes,
-          repoFullName: repo.fullName,
-          difficulty,
-          questionCount,
-          createdAt: Date.now(),
-        }),
-      );
+      const payload: QuizPayload = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        quizzes: generated.quizzes,
+        repoFullName: repo.fullName,
+        difficulty,
+        questionCount,
+        createdAt: Date.now(),
+      };
+
+      sessionStorage.setItem("solo_quiz_payload", JSON.stringify(payload));
+      appendQuizHistory(payload);
       router.push("/solo/quiz");
     } catch (error) {
       console.error(error);
@@ -240,7 +244,7 @@ export default function SoloSettings({ loadedRepos }: SoloSettingsProps) {
           onClick={handleStartQuiz}
           className="w-full py-3 bg-linear-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-200 text-sm"
         >
-          {isGenerating ? "クイズ生成中..." : "🚀 クイズ開始"}
+          {isGenerating ? "クイズ生成中..." : "📝 クイズ開始"}
         </button>
         {generationError && (
           <p className="text-center text-[11px] text-red-500 mt-2">{generationError}</p>
