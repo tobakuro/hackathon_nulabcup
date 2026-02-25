@@ -1,0 +1,30 @@
+# EXAMPLE USAGE:
+#
+#   Refer for explanation to following link:
+#   https://lefthook.dev/configuration/
+#
+# pre-push:
+#   jobs:
+#     - name: packages audit
+#       tags:
+#         - frontend
+#         - security
+#       run: yarn audit
+#
+#     - name: gems audit
+#       tags:
+#         - backend
+#         - security
+#       run: bundle audit
+#
+pre-commit:
+  jobs:
+    - name: lint
+      run: cd frontend && npm run lint -- --fix
+      glob: "*.{js,ts,jsx,tsx}"
+
+    - name: fmt
+      run: cd frontend && npm run format
+
+    - name: re-stage
+      run: git diff --cached --name-only | xargs -r git add

@@ -8,7 +8,8 @@
     "air@latest",
     "golangci-lint@latest",
     "sqlc@latest",
-    "goose@latest"
+    "goose@latest",
+    "lefthook@latest"
   ],
   "env": {
     "PGDATA": "$HOME/.local/share/hackathon_nulabcup/postgresql/data",
