@@ -7,11 +7,12 @@ import { getRepoDependencies } from "@/app/actions/github";
 
 interface SetupWizardProps {
   repos: GitHubRepo[];
+  fetchError?: string | null;
 }
 
-type Step = "select" | "processing" | "done";
+type Step = "select" | "processing" | "done" | "failed";
 
-export default function SetupWizard({ repos }: SetupWizardProps) {
+export default function SetupWizard({ repos, fetchError }: SetupWizardProps) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("select");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -38,24 +39,28 @@ export default function SetupWizard({ repos }: SetupWizardProps) {
     setError(null);
 
     const selectedRepos = repos.filter((r) => selectedIds.has(r.id));
+    const errors: string[] = [];
+    let successCount = 0;
 
     for (let i = 0; i < selectedRepos.length; i++) {
       const repo = selectedRepos[i];
       const [owner, repoName] = repo.full_name.split("/");
-      setCurrentIndex(i + 1);
       setCurrentRepo(repo.full_name);
 
       try {
         await getRepoDependencies(owner, repoName, repo.default_branch);
+        successCount++;
       } catch (err) {
-        setError(
-          `${repo.full_name} の読み取りに失敗しました: ${err instanceof Error ? err.message : "不明なエラー"}`,
-        );
-        // エラーが起きても続行
+        errors.push(`${repo.full_name}: ${err instanceof Error ? err.message : "不明なエラー"}`);
       }
+
+      setCurrentIndex(i + 1);
     }
 
-    setStep("done");
+    if (errors.length > 0) {
+      setError(errors.join("\n"));
+    }
+    setStep(successCount > 0 ? "done" : "failed");
   };
 
   // ステップ1: リポジトリ選択
@@ -69,6 +74,11 @@ export default function SetupWizard({ repos }: SetupWizardProps) {
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             クイズで使用するリポジトリを1つ以上選択してください。AIが解析して問題を生成します。
           </p>
+          {fetchError && (
+            <div className="mt-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+              <p className="text-xs text-red-600 dark:text-red-400">{fetchError}</p>
+            </div>
+          )}
         </div>
 
         <div className="p-4 max-h-80 overflow-y-auto">
@@ -165,7 +175,7 @@ export default function SetupWizard({ repos }: SetupWizardProps) {
             </h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">{currentRepo}</p>
             <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
-              {currentIndex} / {total} 完了
+              {currentIndex} / {total} 処理済み
             </p>
           </div>
 
@@ -191,51 +201,98 @@ export default function SetupWizard({ repos }: SetupWizardProps) {
     );
   }
 
-  // ステップ3: 完了
+  // ステップ3: 完了 / 全件失敗
+  const isFailed = step === "failed";
+
   return (
     <div className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-2xl shadow-lg border border-zinc-200 dark:border-zinc-800 p-8">
       <div className="flex flex-col items-center gap-6">
-        <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="w-8 h-8 text-emerald-600 dark:text-emerald-400"
-          >
-            <path d="M20 6 9 17l-5-5" />
-          </svg>
+        <div
+          className={`w-16 h-16 rounded-full flex items-center justify-center ${
+            isFailed ? "bg-red-100 dark:bg-red-900/30" : "bg-emerald-100 dark:bg-emerald-900/30"
+          }`}
+        >
+          {isFailed ? (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-8 h-8 text-red-600 dark:text-red-400"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" x2="9" y1="9" y2="15" />
+              <line x1="9" x2="15" y1="9" y2="15" />
+            </svg>
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-8 h-8 text-emerald-600 dark:text-emerald-400"
+            >
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          )}
         </div>
 
         <div className="text-center">
           <h2 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">
-            セットアップ完了！
+            {isFailed ? "セットアップに失敗しました" : "セットアップ完了！"}
           </h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            {selectedIds.size} 件のリポジトリの解析が完了しました。
-            <br />
-            さっそくクイズに挑戦しましょう！
+            {isFailed ? (
+              "すべてのリポジトリの読み取りに失敗しました。もう一度お試しください。"
+            ) : (
+              <>
+                {selectedIds.size} 件のリポジトリの解析が完了しました。
+                <br />
+                さっそくクイズに挑戦しましょう！
+              </>
+            )}
           </p>
         </div>
 
         {error && (
-          <div className="w-full p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-            <p className="text-xs text-amber-600 dark:text-amber-400">
-              ⚠️
-              一部のリポジトリで問題が発生しましたが、正常に読み取れたリポジトリでプレイできます。
+          <div
+            className={`w-full p-3 rounded-lg border ${
+              isFailed
+                ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+            }`}
+          >
+            <p
+              className={`text-xs whitespace-pre-line ${
+                isFailed ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
+              }`}
+            >
+              {isFailed ? error : `⚠️ 一部のリポジトリで問題が発生しました:\n${error}`}
             </p>
           </div>
         )}
 
-        <button
-          onClick={() => router.push("/home")}
-          className="w-full py-3 bg-linear-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] transition-all duration-200 text-sm"
-        >
-          ホームへ進む →
-        </button>
+        {isFailed ? (
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full py-3 bg-linear-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] transition-all duration-200 text-sm"
+          >
+            やり直す
+          </button>
+        ) : (
+          <button
+            onClick={() => router.push("/home")}
+            className="w-full py-3 bg-linear-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] transition-all duration-200 text-sm"
+          >
+            ホームへ進む →
+          </button>
+        )}
       </div>
     </div>
   );

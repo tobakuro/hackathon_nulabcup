@@ -1,5 +1,5 @@
 {
-  "id": "25718d0e-ca7e-4406-88f8-5fb7dc4c9d16",
+  "id": "c088a5c1-ee76-401f-8596-16da29d88d8d",
   "prevId": "a8c75b11-4619-4e51-b5d3-18825e402a83",
   "version": "7",
   "dialect": "postgresql",
@@ -61,7 +61,9 @@
         "repositories_full_name_unique": {
           "name": "repositories_full_name_unique",
           "nullsNotDistinct": false,
-          "columns": ["full_name"]
+          "columns": [
+            "full_name"
+          ]
         }
       },
       "policies": {},
@@ -127,8 +129,12 @@
           "name": "repository_files_repository_id_repositories_id_fk",
           "tableFrom": "repository_files",
           "tableTo": "repositories",
-          "columnsFrom": ["repository_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "repository_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -152,7 +158,7 @@
         },
         "github_id": {
           "name": "github_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
@@ -162,34 +168,37 @@
           "primaryKey": false,
           "notNull": true
         },
-        "name": {
-          "name": "name",
-          "type": "varchar(255)",
+        "gnu_balance": {
+          "name": "gnu_balance",
+          "type": "integer",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": 1000
         },
-        "email": {
-          "name": "email",
-          "type": "varchar(255)",
+        "rate": {
+          "name": "rate",
+          "type": "integer",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": 1500
         },
-        "image": {
-          "name": "image",
+        "encrypted_token": {
+          "name": "encrypted_token",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "''"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
@@ -202,7 +211,9 @@
         "users_github_id_unique": {
           "name": "users_github_id_unique",
           "nullsNotDistinct": false,
-          "columns": ["github_id"]
+          "columns": [
+            "github_id"
+          ]
         }
       },
       "policies": {},

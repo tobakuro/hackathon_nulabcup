@@ -52,7 +52,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               },
             });
         } catch (error) {
-          console.warn("Failed to upsert user to DB:", error);
+          console.warn(
+            "Failed to upsert user to DB:",
+            error instanceof Error ? error.message : "Unknown error",
+          );
           // DB接続エラーでもログイン自体は許可する
         }
       }

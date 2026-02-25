@@ -19,7 +19,10 @@ export const users = pgTable("users", {
   rate: integer("rate").notNull().default(1500),
   encryptedToken: text("encrypted_token").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
 });
 
 export const repositories = pgTable("repositories", {

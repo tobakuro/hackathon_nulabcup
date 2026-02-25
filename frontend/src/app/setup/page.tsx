@@ -27,8 +27,11 @@ export default async function SetupPage() {
   });
 
   let repos: GitHubRepo[] = [];
+  let fetchError: string | null = null;
   if (res.ok) {
     repos = await res.json();
+  } else {
+    fetchError = `GitHubリポジトリの取得に失敗しました (${res.status} ${res.statusText})`;
   }
 
   return (
@@ -66,7 +69,7 @@ export default async function SetupPage() {
           </p>
         </div>
 
-        <SetupWizard repos={repos} />
+        <SetupWizard repos={repos} fetchError={fetchError} />
       </main>
     </div>
   );
