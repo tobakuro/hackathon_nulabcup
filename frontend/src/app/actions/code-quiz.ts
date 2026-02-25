@@ -129,7 +129,7 @@ export async function createCodeSessionAction(
     (f) => isQuizCandidatePath(f.filePath) && f.content.split("\n").length >= 10,
   );
 
-  if (candidateFiles.length < 5) return null;
+  if (candidateFiles.length < 3) return null;
 
   const selectedFiles = shuffleArray(candidateFiles).slice(0, 5);
 
