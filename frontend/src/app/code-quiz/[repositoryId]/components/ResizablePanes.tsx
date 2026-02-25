@@ -91,6 +91,7 @@ export default function ResizablePanes({
 
       {/* Left divider */}
       <div
+        role="separator"
         className="w-1 shrink-0 bg-zinc-200 dark:bg-zinc-800 hover:bg-blue-400 dark:hover:bg-blue-600 cursor-col-resize transition-colors active:bg-blue-500"
         onMouseDown={onMouseDown("left")}
       />
@@ -100,6 +101,7 @@ export default function ResizablePanes({
 
       {/* Right divider */}
       <div
+        role="separator"
         className="w-1 shrink-0 bg-zinc-200 dark:bg-zinc-800 hover:bg-blue-400 dark:hover:bg-blue-600 cursor-col-resize transition-colors active:bg-blue-500"
         onMouseDown={onMouseDown("right")}
       />

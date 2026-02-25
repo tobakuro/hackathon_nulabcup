@@ -9,8 +9,6 @@ import {
   type QuizPayload,
 } from "@/lib/soloQuizHistory";
 
-interface QuizClientPayload extends QuizPayload {}
-
 function formatDifficultyLabel(value: QuizPayload["difficulty"]): string {
   if (value === "easy") return "かんたん";
   if (value === "normal") return "ふつう";
@@ -18,7 +16,7 @@ function formatDifficultyLabel(value: QuizPayload["difficulty"]): string {
 }
 
 export default function SoloQuizClient() {
-  const [payload, setPayload] = useState<QuizClientPayload | null>(null);
+  const [payload, setPayload] = useState<QuizPayload | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -30,7 +28,7 @@ export default function SoloQuizClient() {
     const raw = sessionStorage.getItem("solo_quiz_payload");
     if (!raw) return;
     try {
-      const parsed = JSON.parse(raw) as QuizClientPayload;
+      const parsed = JSON.parse(raw) as QuizPayload;
       if (!parsed || !Array.isArray(parsed.quizzes) || parsed.quizzes.length === 0) return;
       setPayload(parsed);
     } catch (error) {
