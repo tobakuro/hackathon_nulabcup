@@ -130,13 +130,15 @@ func (h *Hub) Run(ctx context.Context) {
 			if ok1 {
 				select {
 				case sub1 <- result:
-				default:
+				case <-time.After(200 * time.Millisecond):
+					log.Printf("hub: dropped match notification for subscriber %s", result.Room.Player1ID)
 				}
 			}
 			if ok2 {
 				select {
 				case sub2 <- result:
-				default:
+				case <-time.After(200 * time.Millisecond):
+					log.Printf("hub: dropped match notification for subscriber %s", result.Room.Player2ID)
 				}
 			}
 
