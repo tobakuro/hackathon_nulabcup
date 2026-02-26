@@ -66,7 +66,7 @@ func main() {
 
 	var devHandler *handler.DevHandler
 	if os.Getenv("ENV") == "development" {
-		devHandler = handler.NewDevHandler(userRepo, matchmakingUsecase)
+		devHandler = handler.NewDevHandler(userRepo, matchmakingUsecase, hub)
 	}
 
 	// Router & Start

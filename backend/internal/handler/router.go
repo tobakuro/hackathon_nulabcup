@@ -31,7 +31,7 @@ func NewRouter(
 
 	// REST API
 	api := e.Group("/api/v1")
-	api.GET("/users/me", userHandler.GetMe)
+	api.GET("/users/me", userHandler.GetMe, GitHubAuthMiddleware)
 
 	// WebSocket
 	ws := e.Group("/ws")
@@ -42,6 +42,7 @@ func NewRouter(
 	if os.Getenv("ENV") == "development" && devHandler != nil {
 		dev := e.Group("/api/dev")
 		dev.POST("/enqueue-test-user", devHandler.EnqueueTestUser)
+		dev.POST("/start-bot-match", devHandler.StartBotMatch)
 	}
 
 	return e

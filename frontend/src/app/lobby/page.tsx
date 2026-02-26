@@ -4,12 +4,33 @@ import Link from "next/link";
 import Image from "next/image";
 import MatchmakingPanel from "./MatchmakingPanel";
 
+interface UserStats {
+  gnu_balance: number;
+  rate: number;
+}
+
+async function fetchUserStats(accessToken: string): Promise<UserStats | null> {
+  try {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+    const res = await fetch(`${apiBase}/api/v1/users/me`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 export default async function LobbyPage() {
   const session = await auth();
 
   if (!session?.user) {
     redirect("/auth");
   }
+
+  const stats = session.accessToken ? await fetchUserStats(session.accessToken) : null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black overflow-hidden relative">
@@ -43,12 +64,28 @@ export default async function LobbyPage() {
                 className="rounded-full ring-2 ring-blue-500/20"
               />
             )}
-            <div>
+            <div className="flex-1">
               <p className="font-medium text-zinc-900 dark:text-white text-sm">
                 {session.user.name}
               </p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">ログイン中</p>
             </div>
+            {stats && (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                  <span className="text-sm">🦬</span>
+                  <span className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                    {stats.gnu_balance.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                  <span className="text-xs text-blue-500">★</span>
+                  <span className="text-xs font-bold text-blue-700 dark:text-blue-400">
+                    {stats.rate}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Matchmaking Panel */}

@@ -14,6 +14,11 @@ export default async function RoomPage({ params }: RoomPageProps) {
   }
 
   const { roomId } = await params;
+  const user = session.user as typeof session.user & { github_login?: string; github_id?: number };
+
+  if (!user.github_login || !user.github_id) {
+    redirect("/auth");
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black overflow-hidden relative">
@@ -23,12 +28,14 @@ export default async function RoomPage({ params }: RoomPageProps) {
         <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-linear-to-tr from-emerald-400/20 to-cyan-500/20 rounded-full blur-3xl animate-pulse [animation-delay:2s]" />
       </div>
 
-      <main className="relative z-10 w-full max-w-lg px-6">
+      <main className="relative z-10 w-full max-w-2xl px-4">
         <GameRoom
           roomId={roomId}
           user={{
-            id: session.user.id ?? "",
-            name: session.user.name ?? "",
+            id: user.id ?? "",
+            name: user.name ?? "",
+            github_login: user.github_login,
+            github_id: user.github_id,
           }}
         />
       </main>

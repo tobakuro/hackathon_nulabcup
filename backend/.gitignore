@@ -1,2 +1,5 @@
 tmp/
 .env
+
+# Local bin directory
+bin/

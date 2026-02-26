@@ -13,7 +13,8 @@
   ],
   "env": {
     "PGDATA": "$HOME/.local/share/hackathon_nulabcup/postgresql/data",
-    "PGHOST": "/tmp"
+    "PGHOST": "/tmp",
+    "ENV": "development"
   },
   "shell": {
     "init_hook": [
