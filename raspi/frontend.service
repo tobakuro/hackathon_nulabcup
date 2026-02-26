@@ -1,0 +1,17 @@
+[Unit]
+Description=Next.js Frontend (hackathon_nulabcup)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/actions-runner/_work/hackathon_nulabcup/hackathon_nulabcup/frontend
+ExecStart=%h/actions-runner/_work/hackathon_nulabcup/hackathon_nulabcup/.devbox/nix/profile/default/bin/node ./node_modules/.bin/next start -p 3002
+EnvironmentFile=%h/actions-runner/_work/hackathon_nulabcup/hackathon_nulabcup/frontend/.env
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=frontend
+
+[Install]
+WantedBy=default.target

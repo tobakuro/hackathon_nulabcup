@@ -19,3 +19,7 @@ func NewUserUsecase(userRepo repository.UserRepository) *UserUsecase {
 func (uc *UserUsecase) GetMe(ctx context.Context, userID uuid.UUID) (*entity.User, error) {
 	return uc.userRepo.GetByID(ctx, userID)
 }
+
+func (uc *UserUsecase) GetMeByGitHubLogin(ctx context.Context, login string) (*entity.User, error) {
+	return uc.userRepo.GetByGitHubLogin(ctx, login)
+}

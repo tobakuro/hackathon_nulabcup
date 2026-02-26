@@ -1,9 +1,5 @@
 -- +goose Up
--- +goose StatementBegin
-CREATE INDEX IF NOT EXISTS "repository_files_repository_id_idx" ON "repository_files" ("repository_id");
--- +goose StatementEnd
+-- repository_files インデックスは Drizzle (frontend) で管理するため、goose では作成しない
 
 -- +goose Down
--- +goose StatementBegin
-DROP INDEX IF EXISTS "repository_files_repository_id_idx";
--- +goose StatementEnd
+-- no-op

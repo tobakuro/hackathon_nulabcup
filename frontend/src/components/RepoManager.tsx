@@ -181,8 +181,9 @@ export default function RepoManager({
                   className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden"
                 >
                   {/* ヘッダー行（クリックで展開） */}
-                  <div
-                    className="flex items-center justify-between p-4 cursor-pointer select-none"
+                  <button
+                    type="button"
+                    className="flex items-center justify-between p-4 cursor-pointer select-none w-full text-left"
                     onClick={() => setExpandedId(isExpanded ? null : repo.id)}
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -220,8 +221,10 @@ export default function RepoManager({
                       </span>
                       {loadingId === repo.id ? (
                         <div
+                          role="presentation"
                           className="flex flex-col gap-1 w-28"
                           onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
                         >
                           <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
                             <div
@@ -272,7 +275,7 @@ export default function RepoManager({
                         <path d="m6 9 6 6 6-6" />
                       </svg>
                     </div>
-                  </div>
+                  </button>
 
                   {/* 展開コンテンツ */}
                   {isExpanded && report && (
