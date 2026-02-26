@@ -38,7 +38,8 @@
       "db:setup": [
         "echo 'PostgreSQLの起動を待っています...'; for i in $(seq 1 60); do pg_isready -h \"$PGHOST\" -q && break; sleep 1; printf '.'; done; echo ''",
         "if ! psql -h \"$PGHOST\" -lqt 2>/dev/null | cut -d '|' -f 1 | grep -qw hackathon; then createdb -h \"$PGHOST\" hackathon && echo 'Created database: hackathon'; else echo 'Database hackathon already exists'; fi",
-        "GOOSE_DRIVER=postgres GOOSE_DBSTRING=\"host=${PGHOST} user=${USER} dbname=hackathon sslmode=disable\" GOOSE_MIGRATION_DIR=${DEVBOX_PROJECT_ROOT}/backend/db/migrations goose up && echo 'All migrations applied.'"
+        "GOOSE_DRIVER=postgres GOOSE_DBSTRING=\"host=${PGHOST} user=${USER} dbname=hackathon sslmode=disable\" GOOSE_MIGRATION_DIR=${DEVBOX_PROJECT_ROOT}/backend/db/migrations goose up && echo 'All goose migrations applied.'",
+        "cd ${DEVBOX_PROJECT_ROOT}/frontend && npx drizzle-kit migrate && echo 'All drizzle migrations applied.'"
       ],
       "backend:dev": [
         "cd backend && air"
