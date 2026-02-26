@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 )
@@ -39,6 +40,9 @@ func GitHubAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 func resolveGitHubLogin(ctx context.Context, token string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, githubUserAPI, nil)
 	if err != nil {
 		return "", fmt.Errorf("build request: %w", err)
@@ -46,7 +50,8 @@ func resolveGitHubLogin(ctx context.Context, token string) (string, error) {
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("github api: %w", err)
 	}
