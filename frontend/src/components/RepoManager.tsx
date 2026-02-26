@@ -223,7 +223,6 @@ export default function RepoManager({
                         <div
                           role="presentation"
                           className="flex flex-col gap-1 w-28"
-                          role="presentation"
                           onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => e.stopPropagation()}
                         >
