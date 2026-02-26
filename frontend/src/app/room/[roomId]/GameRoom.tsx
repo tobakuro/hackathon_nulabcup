@@ -6,6 +6,7 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { getWsUrl } from "@/lib/ws";
 import { getLoadedRepositories, type LoadedRepository } from "@/app/actions/github";
 import { generateQuizBatchAction, type QuizQuestion } from "@/app/actions/quiz";
+import MarkdownText from "@/components/MarkdownText";
 
 // ── 型定義 ──────────────────────────────────────────────
 
@@ -146,7 +147,11 @@ const BOT_DUMMY_QUESTIONS: BackendQuestion[] = [
 // QuizQuestion (Gemini形式) → BackendQuestion (バックエンド形式) に変換
 // Lv1→easy, Lv2→normal, Lv3→hard にマッピング
 function toBackendQuestion(q: QuizQuestion): BackendQuestion {
-  const diffMap: Record<string, string> = { Lv1: "easy", Lv2: "normal", Lv3: "hard" };
+  const diffMap: Record<string, string> = {
+    Lv1: "easy",
+    Lv2: "normal",
+    Lv3: "hard",
+  };
   return {
     difficulty: diffMap[q.difficulty] ?? "normal",
     question_text: q.question,
@@ -866,9 +871,10 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
                   <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
                     💡 Tips
                   </p>
-                  <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed">
-                    {turnResult.tips}
-                  </p>
+                  <MarkdownText
+                    content={turnResult.tips}
+                    className="mt-2 text-xs text-zinc-900 dark:text-zinc-100 leading-relaxed"
+                  />
                 </div>
               )}
 
