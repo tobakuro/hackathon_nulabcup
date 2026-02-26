@@ -719,7 +719,9 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500 dark:text-zinc-400 shrink-0">0</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 shrink-0">
+                  {currentTurn.min_bet}
+                </span>
                 <input
                   type="range"
                   min={currentTurn.min_bet}
@@ -944,7 +946,7 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
                 <div className="flex-1 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 text-center">
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">相手の正解数</p>
                   <p className="text-3xl font-black text-zinc-900 dark:text-white">
-                    {gameEnd.your_correct_count}
+                    {gameEnd.opponent_correct_count ?? 0}
                     <span className="text-base font-normal text-zinc-400 dark:text-zinc-500">
                       {" "}
                       /{" "}
