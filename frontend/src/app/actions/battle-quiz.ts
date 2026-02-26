@@ -62,10 +62,7 @@ async function fetchCodeFromRepo(
   return { code: combinedText, repositoryId: repository.id };
 }
 
-async function generateQuizzesFromCode(
-  code: string,
-  count: number,
-): Promise<QuizQuestion[]> {
+async function generateQuizzesFromCode(code: string, count: number): Promise<QuizQuestion[]> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || !code) return [];
 
@@ -140,7 +137,9 @@ export async function generateBattleQuizAction(
   opponentGithubLogin: string,
 ): Promise<BattleQuizResult | null> {
   const session = await auth();
-  const githubLogin = (session?.user as unknown as Record<string, unknown>)?.github_login as string | undefined;
+  const githubLogin = (session?.user as unknown as Record<string, unknown>)?.github_login as
+    | string
+    | undefined;
   if (!githubLogin) throw new Error("未認証です");
 
   // 自分と相手の最新解析済みリポジトリを並列で取得
@@ -177,7 +176,9 @@ export async function generateBattleQuizAction(
   if (forOpponentQuizzes.length === 0 && myQuizzes.length === 0) return null;
 
   // DBにユーザーIDで保存
-  const githubId = (session?.user as unknown as Record<string, unknown>)?.github_id as number | undefined;
+  const githubId = (session?.user as unknown as Record<string, unknown>)?.github_id as
+    | number
+    | undefined;
   if (githubId) {
     const [dbUser] = await db
       .select({ id: users.id })

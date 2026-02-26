@@ -87,8 +87,7 @@ export const battleQuizzes = pgTable(
     // 問題のソース（自分のリポジトリか相手のリポジトリか）
     source: varchar("source", { length: 20 }).notNull(), // "my_repo" | "opponent_repo"
     // 問題が生成されたリポジトリ
-    repositoryId: uuid("repository_id")
-      .references(() => repositories.id, { onDelete: "set null" }),
+    repositoryId: uuid("repository_id").references(() => repositories.id, { onDelete: "set null" }),
     // ターン番号（1-indexed）
     turnIndex: integer("turn_index").notNull(),
     // 問題内容
@@ -101,7 +100,9 @@ export const battleQuizzes = pgTable(
   },
   (table) => ({
     roomIdIdx: index("battle_quizzes_room_id_idx").on(table.roomId),
-    generatedByUserIdIdx: index("battle_quizzes_generated_by_user_id_idx").on(table.generatedByUserId),
+    generatedByUserIdIdx: index("battle_quizzes_generated_by_user_id_idx").on(
+      table.generatedByUserId,
+    ),
   }),
 );
 

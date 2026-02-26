@@ -494,7 +494,9 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
               <>
                 <div className="relative">
                   <div className="w-16 h-16 rounded-full border-4 border-zinc-200 dark:border-zinc-700 border-t-purple-500 animate-spin" />
-                  <span className="absolute inset-0 flex items-center justify-center text-2xl">🤖</span>
+                  <span className="absolute inset-0 flex items-center justify-center text-2xl">
+                    🤖
+                  </span>
                 </div>
                 <div className="text-center">
                   <p className="font-bold text-zinc-900 dark:text-white">問題を生成中...</p>
