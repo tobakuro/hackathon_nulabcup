@@ -16,15 +16,15 @@ import (
 
 const (
 	turnDuration      = 15 * time.Second
-	questionWaitLimit = 60 * time.Second
+	questionWaitLimit = 180 * time.Second // 問題生成（Gemini×2回）に最大3分
 	baseGnuPerCorrect = 100
 	tkoBonus          = 300
 	minBet            = 0 // ベット額の最小値（0 = ノーリスク）
 )
 
 // QuestionSet はフロントエンドが送信する問題セット
-// MyQuestions[0]=Easy, MyQuestions[1]=Hard  (自分が解く)
-// ForOpponent[0]=Easy, ForOpponent[1]=Normal (相手が解く)
+// MyQuestions[0-4]: 相手のリポジトリから生成 (自分が解く 5問)
+// ForOpponent[0-4]: 自分のリポジトリから生成 (相手が解く 5問)
 type QuestionSet struct {
 	MyQuestions []entity.Question `json:"my_questions"`
 	ForOpponent []entity.Question `json:"for_opponent"`
@@ -232,18 +232,18 @@ func (r *GameRoom) run(ctx context.Context) {
 				log.Printf("game room %s: player[%d] invalid questions payload: %v", r.id, msg.idx, err)
 				continue
 			}
-			if len(qs.MyQuestions) < 2 || len(qs.ForOpponent) < 2 {
-				log.Printf("game room %s: player[%d] insufficient questions", r.id, msg.idx)
+			if len(qs.MyQuestions) < 5 || len(qs.ForOpponent) < 5 {
+				log.Printf("game room %s: player[%d] insufficient questions (my=%d, for_opp=%d)", r.id, msg.idx, len(qs.MyQuestions), len(qs.ForOpponent))
 				r.players[msg.idx].send(WSMessage{
 					Type: "ev_error",
 					Payload: map[string]any{
 						"code":    "invalid_questions",
-						"message": "my_questions と for_opponent はそれぞれ2問必要です",
+						"message": "my_questions と for_opponent はそれぞれ5問必要です",
 					},
 				})
 				continue
 			}
-			allQs := append(qs.MyQuestions[:2:2], qs.ForOpponent[:2]...)
+			allQs := append(qs.MyQuestions[:5:5], qs.ForOpponent[:5]...)
 			valid := true
 			for _, q := range allQs {
 				if err := q.Validate(); err != nil {
@@ -273,11 +273,9 @@ func (r *GameRoom) run(ctx context.Context) {
 
 	log.Printf("game room %s: all questions received, starting turns", r.id)
 
-	// ―― ターン定義 ――
-	// ターン0: p0 は p1 の for_opponent[0] (Easy), p1 は p0 の for_opponent[0] (Easy)
-	// ターン1: p0 は p0 の my_questions[0] (Easy), p1 は p1 の my_questions[0] (Easy)
-	// ターン2: p0 は p1 の for_opponent[1] (Normal), p1 は p0 の for_opponent[1] (Normal)
-	// ターン3: p0 は p0 の my_questions[1] (Hard), p1 は p1 の my_questions[1] (Hard)
+	// ―― ターン定義（計10ターン） ――
+	// 奇数ターン(0,2,4,6,8): 相手のfor_opponent[i] = 相手のリポジトリから生成された問題を解く
+	// 偶数ターン(1,3,5,7,9): 自分のmy_questions[i] = 自分のリポジトリから生成された問題を解く
 	type turnDef struct {
 		qForP0 entity.Question
 		qForP1 entity.Question
@@ -287,6 +285,12 @@ func (r *GameRoom) run(ctx context.Context) {
 		{qForP0: p0.questions.MyQuestions[0], qForP1: p1.questions.MyQuestions[0]},
 		{qForP0: p1.questions.ForOpponent[1], qForP1: p0.questions.ForOpponent[1]},
 		{qForP0: p0.questions.MyQuestions[1], qForP1: p1.questions.MyQuestions[1]},
+		{qForP0: p1.questions.ForOpponent[2], qForP1: p0.questions.ForOpponent[2]},
+		{qForP0: p0.questions.MyQuestions[2], qForP1: p1.questions.MyQuestions[2]},
+		{qForP0: p1.questions.ForOpponent[3], qForP1: p0.questions.ForOpponent[3]},
+		{qForP0: p0.questions.MyQuestions[3], qForP1: p1.questions.MyQuestions[3]},
+		{qForP0: p1.questions.ForOpponent[4], qForP1: p0.questions.ForOpponent[4]},
+		{qForP0: p0.questions.MyQuestions[4], qForP1: p1.questions.MyQuestions[4]},
 	}
 
 	totalGnuEarned := [2]int{}
@@ -306,7 +310,7 @@ func (r *GameRoom) run(ctx context.Context) {
 				Type: "ev_turn_start",
 				Payload: map[string]any{
 					"turn":             turnIdx + 1,
-					"total_turns":      4,
+					"total_turns":      10,
 					"difficulty":       q.Difficulty,
 					"question_text":    q.QuestionText,
 					"choices":          q.Choices,
@@ -466,6 +470,7 @@ func (r *GameRoom) run(ctx context.Context) {
 				"your_final_gnu":         p.gnuBalance,
 				"opponent_final_gnu":     opp.gnuBalance,
 				"gnu_earned_this_game":   totalGnuEarned[i],
+				"total_turns":            10,
 			},
 		})
 	}
