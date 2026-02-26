@@ -4,8 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { getWsUrl } from "@/lib/ws";
-import { getLoadedRepositories, type LoadedRepository } from "@/app/actions/github";
-import { generateQuizBatchAction, type QuizQuestion } from "@/app/actions/quiz";
+import { generateBattleQuizAction, type BattleQuestion } from "@/app/actions/battle-quiz";
 import MarkdownText from "@/components/MarkdownText";
 
 // ── 型定義 ──────────────────────────────────────────────
@@ -54,21 +53,13 @@ interface GameEndPayload {
   your_final_gnu: number;
   opponent_final_gnu: number;
   gnu_earned_this_game: number;
+  total_turns: number;
 }
 
 interface TkoPayload {
   message: string;
   tko_bonus: number;
   your_final_gnu: number;
-}
-
-// バックエンドへ送信する問題の型
-interface BackendQuestion {
-  difficulty: string;
-  question_text: string;
-  correct_answer: string;
-  tips: string;
-  choices: string[];
 }
 
 type GamePhase =
@@ -103,7 +94,7 @@ const DIFFICULTY_LABEL: Record<string, { label: string; color: string; bg: strin
 };
 
 // Bot対戦時に使う固定ダミー問題（bot_player.go と対応）
-const BOT_DUMMY_QUESTIONS: BackendQuestion[] = [
+const BOT_DUMMY_QUESTIONS: BattleQuestion[] = [
   {
     difficulty: "easy",
     question_text: "Next.js で「use client」ディレクティブを先頭に書く目的は？",
@@ -142,24 +133,14 @@ const BOT_DUMMY_QUESTIONS: BackendQuestion[] = [
     tips: "--amend は直前のコミットを上書き修正します。push 済みの場合は force push が必要です。",
     choices: ["git commit --amend", "git rebase -i", "git reset HEAD~1", "git revert HEAD"],
   },
+  {
+    difficulty: "normal",
+    question_text: "RESTful API で「リソースの一部更新」に使うHTTPメソッドはどれ？",
+    correct_answer: "PATCH",
+    tips: "PATCHはリソースの部分更新、PUTはリソース全体の置換に使います。",
+    choices: ["PATCH", "PUT", "POST", "UPDATE"],
+  },
 ];
-
-// QuizQuestion (Gemini形式) → BackendQuestion (バックエンド形式) に変換
-// Lv1→easy, Lv2→normal, Lv3→hard にマッピング
-function toBackendQuestion(q: QuizQuestion): BackendQuestion {
-  const diffMap: Record<string, string> = {
-    Lv1: "easy",
-    Lv2: "normal",
-    Lv3: "hard",
-  };
-  return {
-    difficulty: diffMap[q.difficulty] ?? "normal",
-    question_text: q.question,
-    correct_answer: q.options[q.answerIndex],
-    tips: q.tips,
-    choices: [...q.options],
-  };
-}
 
 // ── コンポーネント ────────────────────────────────────────
 
@@ -179,8 +160,6 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // 問題準備フェーズの状態
-  const [repos, setRepos] = useState<LoadedRepository[]>([]);
-  const [selectedRepo, setSelectedRepo] = useState<LoadedRepository | null>(null);
   const [quizGenStatus, setQuizGenStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [quizGenError, setQuizGenError] = useState<string | null>(null);
 
@@ -195,15 +174,10 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const turnStartTimeRef = useRef<number>(0);
 
-  // 問題準備フェーズ カウントダウン（60秒）
-  const [prepTimeLeft, setPrepTimeLeft] = useState(60);
-  const prepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   // ターン開始アニメーション用タイムアウト
   const turnAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // sendMessage を onMessage コールバック内から参照するための ref
-  // （useWebSocket の戻り値を onMessage に直接渡すと循環参照になるため）
   const sendMessageRef = useRef<((msg: unknown) => void) | null>(null);
 
   // 全ターン結果の蓄積
@@ -217,30 +191,6 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
       timerRef.current = null;
     }
   }, []);
-
-  const stopPrepTimer = useCallback(() => {
-    if (prepTimerRef.current) {
-      clearInterval(prepTimerRef.current);
-      prepTimerRef.current = null;
-    }
-  }, []);
-
-  const startPrepTimer = useCallback(() => {
-    stopPrepTimer();
-    setPrepTimeLeft(60);
-    prepTimerRef.current = setInterval(() => {
-      setPrepTimeLeft((prev) => {
-        if (prev <= 1) {
-          if (prepTimerRef.current) {
-            clearInterval(prepTimerRef.current);
-            prepTimerRef.current = null;
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [stopPrepTimer]);
 
   const startTimer = useCallback(
     (seconds: number) => {
@@ -263,10 +213,37 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
   useEffect(() => {
     return () => {
       stopTimer();
-      stopPrepTimer();
       if (turnAnimTimerRef.current) clearTimeout(turnAnimTimerRef.current);
     };
-  }, [stopTimer, stopPrepTimer]);
+  }, [stopTimer]);
+
+  // ── 問題自動生成 ──────────────────────────────────────
+
+  const autoGenerateAndSubmit = useCallback(
+    async (opponentGithubLogin: string) => {
+      setQuizGenStatus("loading");
+      setQuizGenError(null);
+      try {
+        const result = await generateBattleQuizAction(roomId, opponentGithubLogin);
+        if (!result || result.myQuestions.length < 5 || result.forOpponent.length < 5) {
+          throw new Error("問題を十分に生成できませんでした");
+        }
+        sendMessageRef.current?.({
+          type: "act_submit_questions",
+          payload: {
+            my_questions: result.myQuestions,
+            for_opponent: result.forOpponent,
+          },
+        });
+        setQuizGenStatus("done");
+        setPhase("waiting_room_ready");
+      } catch (e) {
+        setQuizGenStatus("error");
+        setQuizGenError(e instanceof Error ? e.message : "問題の生成に失敗しました");
+      }
+    },
+    [roomId],
+  );
 
   // ── WS メッセージハンドラ ─────────────────────────────
 
@@ -283,23 +260,20 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
             const myBalance = msg.payload.your_gnu_balance as number;
             setOpponent(opp);
             setMyGnu(myBalance);
-            // Bot対戦の場合は固定ダミー問題を即時送信
+            // Bot対戦の場合は固定ダミー問題を即時送信（5問 vs 5問）
             if (opp.github_login === "test-bot") {
               sendMessageRef.current?.({
                 type: "act_submit_questions",
                 payload: {
-                  my_questions: [BOT_DUMMY_QUESTIONS[0], BOT_DUMMY_QUESTIONS[1]],
-                  for_opponent: [BOT_DUMMY_QUESTIONS[2], BOT_DUMMY_QUESTIONS[3]],
+                  my_questions: BOT_DUMMY_QUESTIONS,
+                  for_opponent: BOT_DUMMY_QUESTIONS,
                 },
               });
               setPhase("waiting_room_ready");
             } else {
-              // 通常対戦: リポジトリ一覧を取得して問題準備フェーズへ
+              // 通常対戦: 相手のgithub_loginを使って自動問題生成開始
               setPhase("preparing_questions");
-              startPrepTimer();
-              getLoadedRepositories().then((list) => {
-                setRepos(list);
-              });
+              autoGenerateAndSubmit(opp.github_login);
             }
             break;
           }
@@ -370,7 +344,7 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
           }
         }
       },
-      [startTimer, stopTimer, startPrepTimer],
+      [startTimer, stopTimer, autoGenerateAndSubmit],
     ),
   });
 
@@ -405,59 +379,6 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
     [answered, sendMessage, stopTimer],
   );
 
-  // リポジトリを選択してGeminiで問題を生成し、サーバーへ送信
-  const handleGenerateAndSubmit = useCallback(
-    async (repo: LoadedRepository) => {
-      stopPrepTimer();
-      setSelectedRepo(repo);
-      setQuizGenStatus("loading");
-      setQuizGenError(null);
-      try {
-        const targetFiles = repo.summaryJson?.analyzedFiles ?? [];
-        const batch = await generateQuizBatchAction(repo.owner, repo.name, "", targetFiles);
-        if (!batch || batch.quizzes.length < 4) {
-          throw new Error("問題を4問以上生成できませんでした");
-        }
-        // 難易度順にソートして my_questions (Lv1+Lv3) / for_opponent (Lv1+Lv2) を構成
-        const easy = batch.quizzes.filter((q) => q.difficulty === "Lv1");
-        const normal = batch.quizzes.filter((q) => q.difficulty === "Lv2");
-        const hard = batch.quizzes.filter((q) => q.difficulty === "Lv3");
-        // 使用済みインデックスを追跡して重複を防ぐ
-        const all = batch.quizzes;
-        const used = new Set<number>();
-        const pickUnused = (candidates: QuizQuestion[]): QuizQuestion => {
-          for (const q of candidates) {
-            const idx = all.indexOf(q);
-            if (!used.has(idx)) {
-              used.add(idx);
-              return q;
-            }
-          }
-          const fallback = all.find((_, i) => !used.has(i))!;
-          used.add(all.indexOf(fallback));
-          return fallback;
-        };
-        const myQ0 = pickUnused([...easy, ...all]);
-        const myQ1 = pickUnused([...hard, ...normal, ...easy, ...all]);
-        const forOp0 = pickUnused([...easy, ...all]);
-        const forOp1 = pickUnused([...normal, ...easy, ...hard, ...all]);
-        sendMessage({
-          type: "act_submit_questions",
-          payload: {
-            my_questions: [toBackendQuestion(myQ0), toBackendQuestion(myQ1)],
-            for_opponent: [toBackendQuestion(forOp0), toBackendQuestion(forOp1)],
-          },
-        });
-        setQuizGenStatus("done");
-        setPhase("waiting_room_ready");
-      } catch (e) {
-        setQuizGenStatus("error");
-        setQuizGenError(e instanceof Error ? e.message : "問題の生成に失敗しました");
-      }
-    },
-    [sendMessage, stopPrepTimer],
-  );
-
   // ── レンダリング ────────────────────────────────────────
 
   const difficultyInfo = currentTurn
@@ -472,6 +393,8 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
   const timerPct = currentTurn ? (timeLeft / currentTurn.time_limit_sec) * 100 : 100;
   const timerColor =
     timeLeft > 8 ? "bg-emerald-500" : timeLeft > 4 ? "bg-amber-500" : "bg-rose-500";
+
+  const totalTurns = (gameEnd?.total_turns ?? turnHistory.length) || 10;
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -548,83 +471,44 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
           </div>
         )}
 
-        {/* 問題準備フェーズ */}
+        {/* 問題準備フェーズ（自動生成中） */}
         {phase === "preparing_questions" && (
-          <div className="flex flex-col gap-4 p-5">
-            <div className="text-center">
-              <p className="font-bold text-zinc-900 dark:text-white text-lg">
-                問題を準備してください
-              </p>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                リポジトリを選択すると、AIが自動で問題を生成して相手に出題します
-              </p>
-            </div>
-
-            {/* 残り時間 */}
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-500 dark:text-zinc-400">残り時間</span>
-                <span
-                  className={`font-bold tabular-nums ${prepTimeLeft <= 15 ? "text-rose-500 animate-pulse" : prepTimeLeft <= 30 ? "text-amber-500" : "text-zinc-700 dark:text-zinc-300"}`}
-                >
-                  {prepTimeLeft}秒
-                </span>
-              </div>
-              <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-1000 ${prepTimeLeft <= 15 ? "bg-rose-500" : prepTimeLeft <= 30 ? "bg-amber-500" : "bg-blue-500"}`}
-                  style={{ width: `${(prepTimeLeft / 60) * 100}%` }}
-                />
-              </div>
-            </div>
-
-            {/* エラー表示 */}
-            {quizGenError && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-sm text-rose-600 dark:text-rose-400">
-                ⚠️ {quizGenError}
-              </div>
-            )}
-
-            {/* 生成中 */}
-            {quizGenStatus === "loading" && (
-              <div className="flex flex-col items-center gap-3 py-6">
-                <div className="w-10 h-10 rounded-full border-4 border-zinc-200 dark:border-zinc-700 border-t-purple-500 animate-spin" />
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 animate-pulse">
-                  AIが問題を生成中... ({selectedRepo?.fullName})
-                </p>
-              </div>
-            )}
-
-            {/* リポジトリ選択リスト */}
-            {quizGenStatus !== "loading" && (
+          <div className="p-10 flex flex-col items-center gap-5">
+            {quizGenStatus === "error" ? (
               <>
-                {repos.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-zinc-400 dark:text-zinc-500">
-                    <p>登録済みリポジトリがありません</p>
-                    <p className="text-xs mt-1">
-                      先に「リポジトリ管理」でリポジトリを読み込んでください
+                <div className="text-5xl">😵</div>
+                <p className="font-bold text-rose-600 dark:text-rose-400 text-center">
+                  {quizGenError ?? "問題の生成に失敗しました"}
+                </p>
+                <p className="text-xs text-zinc-400 dark:text-zinc-500 text-center">
+                  接続が切れるか、リポジトリが未解析の可能性があります
+                </p>
+                <Link
+                  href="/lobby"
+                  className="px-6 py-3 bg-linear-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl"
+                >
+                  ロビーに戻る
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="relative">
+                  <div className="w-16 h-16 rounded-full border-4 border-zinc-200 dark:border-zinc-700 border-t-purple-500 animate-spin" />
+                  <span className="absolute inset-0 flex items-center justify-center text-2xl">
+                    🤖
+                  </span>
+                </div>
+                <div className="text-center">
+                  <p className="font-bold text-zinc-900 dark:text-white">問題を生成中...</p>
+                  {opponent && (
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                      あなたと {opponent.github_login} のリポジトリを解析しています
                     </p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2 max-h-72 overflow-y-auto">
-                    {repos.map((repo) => (
-                      <button
-                        key={repo.id}
-                        onClick={() => handleGenerateAndSubmit(repo)}
-                        className="w-full text-left px-4 py-3 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 hover:border-purple-400 dark:hover:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-200 group"
-                      >
-                        <p className="text-sm font-semibold text-zinc-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-300">
-                          {repo.fullName}
-                        </p>
-                        {repo.summaryJson?.summary && (
-                          <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5 line-clamp-1">
-                            {repo.summaryJson.summary}
-                          </p>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                  )}
+                  <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2 animate-pulse">
+                    AIが問題を生成中です。しばらくお待ちください
+                  </p>
+                </div>
               </>
             )}
           </div>
@@ -646,7 +530,7 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
               )}
               {opponent && opponent.github_login !== "test-bot" && (
                 <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2 animate-pulse">
-                  相手が問題を準備中...
+                  相手が問題を生成中...
                 </p>
               )}
             </div>
@@ -946,7 +830,7 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
                     {gameEnd.your_correct_count}
                     <span className="text-base font-normal text-zinc-400 dark:text-zinc-500">
                       {" "}
-                      / 4
+                      / {totalTurns}
                     </span>
                   </p>
                 </div>
@@ -956,10 +840,7 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
                     {gameEnd.opponent_correct_count ?? 0}
                     <span className="text-base font-normal text-zinc-400 dark:text-zinc-500">
                       {" "}
-                      /{" "}
-                      {gameEnd.your_correct_count + (gameEnd.opponent_correct_count ?? 0) > 0
-                        ? turnHistory.length || 4
-                        : 4}
+                      / {totalTurns}
                     </span>
                   </p>
                 </div>
