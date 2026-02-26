@@ -10,19 +10,27 @@ import (
 )
 
 type Config struct {
-	DBHost     string `env:"DB_HOST"`
-	DBUser     string `env:"DB_USER"`
-	DBPassword string `env:"DB_PASSWORD"`
-	DBName     string `env:"DB_NAME" envDefault:"hackathon"`
-	DBSSLMode  string `env:"DB_SSLMODE" envDefault:"disable"`
-	RedisAddr  string `env:"REDIS_ADDR" envDefault:"localhost:6379"`
-	RedisPW    string `env:"REDIS_PASSWORD" envDefault:""`
-	ServerPort int    `env:"SERVER_PORT" envDefault:"8080"`
-	DBPort     int    `env:"DB_PORT" envDefault:"5432"`
-	RedisDB    int    `env:"REDIS_DB" envDefault:"0"`
+	DatabaseURL string `env:"DATABASE_URL"`
+	DBHost      string `env:"DB_HOST"`
+	DBUser      string `env:"DB_USER"`
+	DBPassword  string `env:"DB_PASSWORD"`
+	DBName      string `env:"DB_NAME" envDefault:"hackathon"`
+	DBSSLMode   string `env:"DB_SSLMODE" envDefault:"disable"`
+	RedisURL    string `env:"REDIS_URL"`
+	RedisAddr   string `env:"REDIS_ADDR" envDefault:"localhost:6379"`
+	RedisPW     string `env:"REDIS_PASSWORD" envDefault:""`
+	RedisTLS    bool   `env:"REDIS_TLS" envDefault:"false"`
+	ServerPort  int    `env:"SERVER_PORT" envDefault:"8080"`
+	DBPort      int    `env:"DB_PORT" envDefault:"5432"`
+	RedisDB     int    `env:"REDIS_DB" envDefault:"0"`
 }
 
+// DSN returns the PostgreSQL connection string.
+// DATABASE_URL takes precedence over individual DB_* variables.
 func (c *Config) DSN() string {
+	if c.DatabaseURL != "" {
+		return c.DatabaseURL
+	}
 	host := envFallback(c.DBHost, "PGHOST", "localhost")
 	user := envFallback(c.DBUser, "USER", "postgres")
 
