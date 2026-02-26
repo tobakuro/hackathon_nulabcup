@@ -168,7 +168,7 @@ export async function createCodeSessionAction(
       .values({
         userId: session.user.id,
         repositoryId,
-        roomId: roomId ?? null,
+        roomId: roomId || null,
         mode,
         totalQuestions: questions.length,
       })
