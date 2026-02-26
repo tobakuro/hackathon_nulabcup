@@ -6,8 +6,10 @@ const getUserDbUrl = () => {
   if (!user) throw new Error("USER/USERNAME environment variable is missing");
   const pgHost = process.env.PGHOST;
   if (pgHost && pgHost.startsWith("/")) {
-    // Unixソケット: postgres://user@/dbname?host=/tmp
-    return `postgres://${user}@/hackathon?host=${encodeURIComponent(pgHost)}`;
+    // Unixソケット: postgres://user@%2Ftmp/hackathon
+    // pg-connection-string は %2F で始まる hostname をソケットパスとして扱う
+    const encodedHost = encodeURIComponent(pgHost);
+    return `postgres://${user}@${encodedHost}/hackathon`;
   }
   const host = pgHost || "localhost";
   return `postgres://${user}@${host}:5432/hackathon`;
