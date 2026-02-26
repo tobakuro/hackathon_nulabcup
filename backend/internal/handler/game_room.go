@@ -17,7 +17,6 @@ import (
 const (
 	turnDuration      = 15 * time.Second
 	questionWaitLimit = 180 * time.Second // 問題生成（Gemini×2回）に最大3分
-	baseGnuPerCorrect = 100
 	tkoBonus          = 300
 	minBet            = 0 // ベット額の最小値（0 = ノーリスク）
 )
@@ -400,19 +399,17 @@ func (r *GameRoom) run(ctx context.Context) {
 			isCorrect := answers[i] >= 0 && answers[i] == correctIdx
 			corrects[i] = isCorrect
 			if isCorrect {
-				earned := baseGnuPerCorrect + bets[i]
-				gnuDeltas[i] = earned
-				p.gnuBalance += earned
-				totalGnuEarned[i] += earned
+				gnuDeltas[i] = bets[i]
+				p.gnuBalance += bets[i]
+				totalGnuEarned[i] += bets[i]
 				correctCounts[i]++
 			} else {
-				loss := bets[i]
-				gnuDeltas[i] = -loss
-				p.gnuBalance -= loss
+				gnuDeltas[i] = -bets[i]
+				p.gnuBalance -= bets[i]
 				if p.gnuBalance < 0 {
 					p.gnuBalance = 0
 				}
-				totalGnuEarned[i] -= loss
+				totalGnuEarned[i] -= bets[i]
 			}
 		}
 

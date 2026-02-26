@@ -100,7 +100,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 }
 
 const updateGnuBalance = `-- name: UpdateGnuBalance :exec
-UPDATE users SET gnu_balance = GREATEST(0, gnu_balance + $2), updated_at = NOW() WHERE id = $1
+UPDATE users SET gnu_balance = GREATEST(0, $2), updated_at = NOW() WHERE id = $1
 `
 
 type UpdateGnuBalanceParams struct {

@@ -13,4 +13,4 @@ RETURNING *;
 SELECT * FROM users WHERE github_login = $1;
 
 -- name: UpdateGnuBalance :exec
-UPDATE users SET gnu_balance = GREATEST(0, gnu_balance + $2), updated_at = NOW() WHERE id = $1;
+UPDATE users SET gnu_balance = GREATEST(0, $2), updated_at = NOW() WHERE id = $1;
