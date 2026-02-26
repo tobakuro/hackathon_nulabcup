@@ -16,5 +16,12 @@
       "tag": "0002_optimal_leper_queen",
       "breakpoints": true
     }
+    ,{
+      "idx": 2,
+      "version": "7",
+      "when": 1772100000000,
+      "tag": "0003_add_battle_quizzes",
+      "breakpoints": true
+    }
   ]
 }
