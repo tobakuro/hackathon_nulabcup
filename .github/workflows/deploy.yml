@@ -87,6 +87,7 @@ jobs:
           GIT_SHA: ${{ github.sha }}
           BACKEND_DATABASE_URL: ${{ secrets.BACKEND_DATABASE_URL }}
           BACKEND_REDIS_URL: ${{ secrets.BACKEND_REDIS_URL }}
+          BACKEND_ALLOWED_ORIGINS: ${{ secrets.BACKEND_ALLOWED_ORIGINS }}
         run: |
           IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/backend/server:${GIT_SHA}"
           docker push "$IMAGE"
@@ -95,7 +96,7 @@ jobs:
             --region "$GCP_REGION" \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "DATABASE_URL=${BACKEND_DATABASE_URL},REDIS_URL=${BACKEND_REDIS_URL},SERVER_PORT=8080" \
+            --set-env-vars "DATABASE_URL=${BACKEND_DATABASE_URL},REDIS_URL=${BACKEND_REDIS_URL},SERVER_PORT=8080,ALLOWED_ORIGINS=${BACKEND_ALLOWED_ORIGINS}" \
             --quiet
 
   # deploy-frontend:
