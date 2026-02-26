@@ -3,6 +3,8 @@ name: Deploy
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   deploy-backend:
@@ -29,7 +31,7 @@ jobs:
           GCP_REGION: ${{ secrets.GCP_REGION }}
         run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
 
-      - name: Build and push Docker image
+      - name: Build Docker image
         env:
           GCP_REGION: ${{ secrets.GCP_REGION }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -37,9 +39,9 @@ jobs:
         run: |
           IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/backend/server:${GIT_SHA}"
           docker build -t "$IMAGE" ./backend
-          docker push "$IMAGE"
 
-      - name: Deploy to Cloud Run
+      - name: Push and deploy (main only)
+        if: github.ref == 'refs/heads/main'
         env:
           GCP_REGION: ${{ secrets.GCP_REGION }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -48,6 +50,7 @@ jobs:
           BACKEND_REDIS_URL: ${{ secrets.BACKEND_REDIS_URL }}
         run: |
           IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/backend/server:${GIT_SHA}"
+          docker push "$IMAGE"
           gcloud run deploy backend \
             --image "$IMAGE" \
             --region "$GCP_REGION" \
@@ -67,7 +70,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -86,7 +89,8 @@ jobs:
           NEXT_PUBLIC_BACKEND_URL: ${{ secrets.FRONTEND_BACKEND_URL }}
         run: npm run build:cf
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Pages (main only)
+        if: github.ref == 'refs/heads/main'
         working-directory: frontend
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
