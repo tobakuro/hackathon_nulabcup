@@ -35,10 +35,7 @@ function parseInline(text: string): ReactNode[] {
       );
     } else if (token.startsWith("`") && token.endsWith("`")) {
       nodes.push(
-        <code
-          key={`c-${key++}`}
-          className="rounded bg-zinc-200/70 dark:bg-zinc-700 px-1 py-0.5"
-        >
+        <code key={`c-${key++}`} className="rounded bg-zinc-200/70 dark:bg-zinc-700 px-1 py-0.5">
           {token.slice(1, -1)}
         </code>,
       );
@@ -75,10 +72,7 @@ function parseInline(text: string): ReactNode[] {
   return nodes;
 }
 
-export default function MarkdownText({
-  content,
-  className,
-}: MarkdownTextProps) {
+export default function MarkdownText({ content, className }: MarkdownTextProps) {
   const lines = content.replace(/\r\n/g, "\n").split("\n");
   const blocks: ReactNode[] = [];
   let i = 0;
@@ -106,9 +100,7 @@ export default function MarkdownText({
           key={`pre-${key++}`}
           className="mt-2 overflow-x-auto rounded-md bg-zinc-900 text-zinc-100 p-3 text-xs font-mono"
         >
-          {fenceLang ? (
-            <div className="text-[10px] text-zinc-400 mb-1">{fenceLang}</div>
-          ) : null}
+          {fenceLang ? <div className="text-[10px] text-zinc-400 mb-1">{fenceLang}</div> : null}
           <code>{codeLines.join("\n")}</code>
         </pre>,
       );
@@ -141,10 +133,7 @@ export default function MarkdownText({
         i += 1;
       }
       blocks.push(
-        <ul
-          key={`ul-${key++}`}
-          className="mt-2 ml-4 list-disc space-y-1 text-inherit"
-        >
+        <ul key={`ul-${key++}`} className="mt-2 ml-4 list-disc space-y-1 text-inherit">
           {items.map((item, idx) => (
             <li key={`li-${idx}`}>{parseInline(item)}</li>
           ))}
