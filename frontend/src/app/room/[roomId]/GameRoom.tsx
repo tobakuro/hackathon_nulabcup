@@ -408,7 +408,8 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
       setQuizGenStatus("loading");
       setQuizGenError(null);
       try {
-        const batch = await generateQuizBatchAction(repo.owner, repo.name, "", []);
+        const targetFiles = repo.summaryJson?.analyzedFiles ?? [];
+        const batch = await generateQuizBatchAction(repo.owner, repo.name, "", targetFiles);
         if (!batch || batch.quizzes.length < 4) {
           throw new Error("問題を4問以上生成できませんでした");
         }
