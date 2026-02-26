@@ -18,7 +18,9 @@
   },
   "shell": {
     "init_hook": [
-      "if [ ! -d \"$PGDATA\" ] || [ -z \"$(ls -A \"$PGDATA\" 2>/dev/null)\" ]; then echo 'Initializing PostgreSQL...'; initdb -D \"$PGDATA\" --no-locale --encoding=UTF8; grep -qF \"listen_addresses = ''\" \"$PGDATA/postgresql.auto.conf\" 2>/dev/null || echo \"listen_addresses = ''\" >> \"$PGDATA/postgresql.auto.conf\"; fi",
+      "if [ ! -d \"$PGDATA\" ] || [ -z \"$(ls -A \"$PGDATA\" 2>/dev/null)\" ]; then echo 'Initializing PostgreSQL...'; initdb -D \"$PGDATA\" --no-locale --encoding=UTF8; fi",
+      "grep -qF \"listen_addresses = ''\" \"$PGDATA/postgresql.auto.conf\" 2>/dev/null || echo \"listen_addresses = ''\" >> \"$PGDATA/postgresql.auto.conf\"",
+      "grep -qF \"unix_socket_directories\" \"$PGDATA/postgresql.auto.conf\" 2>/dev/null || echo \"unix_socket_directories = '/tmp'\" >> \"$PGDATA/postgresql.auto.conf\"",
       "mkdir -p /tmp/redis-devbox",
       "export PGHOST=/tmp",
       "export GOOSE_DRIVER=postgres",
@@ -40,6 +42,12 @@
         "if ! psql -h \"$PGHOST\" -lqt 2>/dev/null | cut -d '|' -f 1 | grep -qw hackathon; then createdb -h \"$PGHOST\" hackathon && echo 'Created database: hackathon'; else echo 'Database hackathon already exists'; fi",
         "GOOSE_DRIVER=postgres GOOSE_DBSTRING=\"host=${PGHOST} user=${USER} dbname=hackathon sslmode=disable\" GOOSE_MIGRATION_DIR=${DEVBOX_PROJECT_ROOT}/backend/db/migrations goose up && echo 'All goose migrations applied.'",
         "cd ${DEVBOX_PROJECT_ROOT}/frontend && npx drizzle-kit migrate && echo 'All drizzle migrations applied.'"
+      ],
+      "db:reset": [
+        "echo 'データベースをリセットしています...'",
+        "psql -h \"$PGHOST\" -d postgres -c \"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'hackathon' AND pid <> pg_backend_pid();\" > /dev/null 2>&1 || true",
+        "dropdb -h \"$PGHOST\" --if-exists hackathon && echo 'Dropped database: hackathon'",
+        "devbox run db:setup"
       ],
       "backend:dev": [
         "cd backend && air"
