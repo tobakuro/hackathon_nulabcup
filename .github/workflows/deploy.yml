@@ -25,8 +25,8 @@ jobs:
 
       - name: Run backend migrations (goose)
         env:
-          BACKEND_DATABASE_URL: ${{ secrets.BACKEND_DATABASE_URL }}
-        run: goose -dir backend/db/migrations postgres "$BACKEND_DATABASE_URL" up
+          BACKEND_DIRECT_DATABASE_URL: ${{ secrets.BACKEND_DIRECT_DATABASE_URL }}
+        run: goose -dir backend/db/migrations postgres "$BACKEND_DIRECT_DATABASE_URL" up
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -41,7 +41,7 @@ jobs:
       - name: Run frontend migrations (drizzle-kit)
         working-directory: frontend
         env:
-          DATABASE_URL: ${{ secrets.FRONTEND_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.FRONTEND_DIRECT_DATABASE_URL }}
         run: npx drizzle-kit migrate
 
   deploy-backend:
