@@ -173,7 +173,12 @@ export async function generateBattleQuizAction(
       : Promise.resolve([] as QuizQuestion[]),
   ]);
 
-  if (forOpponentQuizzes.length === 0 && myQuizzes.length === 0) return null;
+  if (forOpponentQuizzes.length < 5 || myQuizzes.length < 5) {
+    console.error(
+      `Insufficient quizzes generated: forOpponent=${forOpponentQuizzes.length}, my=${myQuizzes.length}`
+    );
+    return null;
+  }
 
   // DBにユーザーIDで保存
   const githubId = (session?.user as unknown as Record<string, unknown>)?.github_id as
