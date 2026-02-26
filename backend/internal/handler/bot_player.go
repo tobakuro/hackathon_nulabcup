@@ -13,7 +13,7 @@ import (
 	"github.com/tobakuro/hackathon_nulabcup/backend/internal/domain/entity"
 )
 
-// botQuestions は Bot が送信するダミー問題セット
+// botQuestions は Bot が送信するダミー問題セット（5問 × 2セット分）
 var botQuestions = []entity.Question{
 	{
 		Difficulty:    "easy",
@@ -42,6 +42,13 @@ var botQuestions = []entity.Question{
 		CorrectAnswer: "git commit --amend",
 		Tips:          "--amend は直前のコミットを上書き修正します。push 済みの場合は force push が必要です。",
 		Choices:       []string{"git commit --amend", "git rebase -i", "git reset HEAD~1", "git revert HEAD"},
+	},
+	{
+		Difficulty:    "normal",
+		QuestionText:  "RESTful API でリソースの一部更新に使う HTTP メソッドはどれ？",
+		CorrectAnswer: "PATCH",
+		Tips:          "PATCH はリソースの部分更新、PUT はリソース全体の置換に使います。",
+		Choices:       []string{"PATCH", "PUT", "POST", "UPDATE"},
 	},
 }
 
@@ -105,8 +112,8 @@ func RunBotPlayer(serverAddr string, roomID uuid.UUID, botUser *entity.User) {
 			sendBotMessage(conn, map[string]any{
 				"type": "act_submit_questions",
 				"payload": map[string]any{
-					"my_questions": botQuestions[:2],
-					"for_opponent": botQuestions[2:],
+					"my_questions": botQuestions[:5],
+					"for_opponent": botQuestions[:5],
 				},
 			})
 			log.Printf("bot: submitted questions")
