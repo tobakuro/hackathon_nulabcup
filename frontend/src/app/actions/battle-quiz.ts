@@ -175,7 +175,7 @@ export async function generateBattleQuizAction(
 
   if (forOpponentQuizzes.length < 5 || myQuizzes.length < 5) {
     console.error(
-      `Insufficient quizzes generated: forOpponent=${forOpponentQuizzes.length}, my=${myQuizzes.length}`
+      `Insufficient quizzes generated: forOpponent=${forOpponentQuizzes.length}, my=${myQuizzes.length}`,
     );
     return null;
   }
@@ -197,7 +197,7 @@ export async function generateBattleQuizAction(
           roomId,
           generatedByUserId: dbUser.id,
           source: "my_repo" as const,
-          repositoryId: myCodeResult.repositoryId ?? undefined,
+          repositoryId: myCodeResult.repositoryId,
           turnIndex: i + 1,
           difficulty: DIFF_MAP[q.difficulty] ?? "normal",
           questionText: q.question,
@@ -209,7 +209,7 @@ export async function generateBattleQuizAction(
           roomId,
           generatedByUserId: dbUser.id,
           source: "opponent_repo" as const,
-          repositoryId: oppCodeResult.repositoryId ?? undefined,
+          repositoryId: oppCodeResult.repositoryId,
           turnIndex: i + 1,
           difficulty: DIFF_MAP[q.difficulty] ?? "normal",
           questionText: q.question,
