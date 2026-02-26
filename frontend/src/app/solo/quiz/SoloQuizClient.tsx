@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import MarkdownText from "@/components/MarkdownText";
 import {
   applyIncorrectRetryResult,
   saveQuizHistoryResult,
@@ -207,10 +208,10 @@ export default function SoloQuizClient() {
                 関連ファイル: {currentQuiz.relatedFile}
               </p>
               <div className="mt-3">
-                <p className="text-xs font-semibold text-zinc-900 dark:text-white">Tips（解説）</p>
-                <pre className="mt-2 whitespace-pre-wrap text-xs text-zinc-600 dark:text-zinc-300 font-sans">
-                  {currentQuiz.tips}
-                </pre>
+                <MarkdownText
+                  content={currentQuiz.tips}
+                  className="mt-2 text-xs text-zinc-900 dark:text-zinc-100 leading-relaxed"
+                />
               </div>
             </div>
             <button

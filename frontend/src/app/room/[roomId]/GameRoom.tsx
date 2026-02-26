@@ -6,6 +6,7 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { getWsUrl } from "@/lib/ws";
 import { getLoadedRepositories, type LoadedRepository } from "@/app/actions/github";
 import { generateQuizBatchAction, type QuizQuestion } from "@/app/actions/quiz";
+import MarkdownText from "@/components/MarkdownText";
 
 // ── 型定義 ──────────────────────────────────────────────
 
@@ -866,9 +867,10 @@ export default function GameRoom({ roomId, user }: GameRoomProps) {
                   <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
                     💡 Tips
                   </p>
-                  <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed">
-                    {turnResult.tips}
-                  </p>
+                  <MarkdownText
+                    content={turnResult.tips}
+                    className="mt-2 text-xs text-zinc-900 dark:text-zinc-100 leading-relaxed"
+                  />
                 </div>
               )}
 
