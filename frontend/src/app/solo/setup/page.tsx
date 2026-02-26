@@ -3,31 +3,11 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getLoadedRepositories } from "@/app/actions/github";
 import SoloSettings from "@/components/SoloSettings";
-import type { SoloMode } from "@/app/actions/quiz";
 
-interface SoloSetupPageProps {
-  searchParams: Promise<{ mode?: string }>;
-}
-
-function resolveMode(rawMode: string | undefined): SoloMode | null {
-  if (rawMode === "tech" || rawMode === "product") return rawMode;
-  return null;
-}
-
-function modeLabel(mode: SoloMode): string {
-  return mode === "tech" ? "テックモード" : "プロダクトモード";
-}
-
-export default async function SoloSetupPage({ searchParams }: SoloSetupPageProps) {
+export default async function SoloSetupPage() {
   const session = await auth();
   if (!session?.user) {
     redirect("/auth");
-  }
-
-  const { mode: rawMode } = await searchParams;
-  const mode = resolveMode(rawMode);
-  if (!mode) {
-    redirect("/solo");
   }
 
   const loadedRepos = await getLoadedRepositories();
@@ -42,7 +22,7 @@ export default async function SoloSetupPage({ searchParams }: SoloSetupPageProps
       <main className="relative z-10 flex flex-col items-center gap-8 w-full max-w-lg px-6">
         <div className="w-full flex items-center justify-between">
           <Link
-            href="/solo"
+            href="/home"
             className="flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
           >
             <svg
@@ -59,7 +39,7 @@ export default async function SoloSetupPage({ searchParams }: SoloSetupPageProps
             >
               <path d="m15 18-6-6 6-6" />
             </svg>
-            モード選択へ戻る
+            戻る
           </Link>
           <div className="flex items-center gap-2">
             <span className="text-xl">🧠</span>
@@ -75,13 +55,7 @@ export default async function SoloSetupPage({ searchParams }: SoloSetupPageProps
           </Link>
         </div>
 
-        <div className="w-full rounded-xl border border-violet-200 bg-violet-50/70 p-3 dark:border-violet-800 dark:bg-violet-900/20">
-          <p className="text-xs font-semibold text-violet-700 dark:text-violet-300">
-            現在のモード: {modeLabel(mode)}
-          </p>
-        </div>
-
-        <SoloSettings loadedRepos={loadedRepos} mode={mode} />
+        <SoloSettings loadedRepos={loadedRepos} />
       </main>
     </div>
   );

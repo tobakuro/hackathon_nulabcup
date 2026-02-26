@@ -12,11 +12,12 @@ type QuestionCount = 5 | 10 | 15;
 
 interface SoloSettingsProps {
   loadedRepos: LoadedRepository[];
-  mode: SoloMode;
+  mode?: SoloMode;
 }
 
-export default function SoloSettings({ loadedRepos, mode }: SoloSettingsProps) {
+export default function SoloSettings({ loadedRepos, mode: initialMode }: SoloSettingsProps) {
   const router = useRouter();
+  const [mode, setMode] = useState<SoloMode>(initialMode ?? "tech");
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
   const [questionCount, setQuestionCount] = useState<QuestionCount>(5);
@@ -93,6 +94,51 @@ export default function SoloSettings({ loadedRepos, mode }: SoloSettingsProps) {
 
   return (
     <div className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-2xl shadow-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+      {/* モード選択 */}
+      <div className="p-6 border-b border-zinc-100 dark:border-zinc-800">
+        <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3 flex items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-4 h-4 text-violet-500"
+          >
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </svg>
+          モード
+        </h2>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => setMode("tech")}
+            className={`py-2.5 text-xs font-medium rounded-lg transition-colors ${
+              mode === "tech"
+                ? "border-2 border-violet-500 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400"
+                : "border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-violet-400 dark:hover:border-violet-600"
+            }`}
+          >
+            テックモード
+          </button>
+          <button
+            onClick={() => setMode("product")}
+            className={`py-2.5 text-xs font-medium rounded-lg transition-colors ${
+              mode === "product"
+                ? "border-2 border-violet-500 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400"
+                : "border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-violet-400 dark:hover:border-violet-600"
+            }`}
+          >
+            プロダクトモード
+          </button>
+        </div>
+        <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-2">
+          {mode === "tech"
+            ? "使われている技術の一般知識で解ける問題"
+            : "プロダクトの実装を知らないと解けない問題"}
+        </p>
+      </div>
       <div className="p-6 border-b border-zinc-100 dark:border-zinc-800">
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3 flex items-center gap-2">
           <svg
