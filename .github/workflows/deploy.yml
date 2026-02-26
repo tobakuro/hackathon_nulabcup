@@ -89,8 +89,8 @@ jobs:
           NEXT_PUBLIC_BACKEND_URL: ${{ secrets.FRONTEND_BACKEND_URL }}
         run: npm run build:cf
 
-      - name: Deploy to Cloudflare Workers (main only)
-        if: github.ref == 'refs/heads/main'
+      - name: Deploy to Cloudflare Workers # (main only)
+        # if: github.ref == 'refs/heads/main'
         working-directory: frontend
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
