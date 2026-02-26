@@ -4,11 +4,13 @@ const getUserDbUrl = () => {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
   const user = process.env.USER || process.env.USERNAME;
   if (!user) throw new Error("USER/USERNAME environment variable is missing");
-  let url = `postgres://${user}@localhost:5432/hackathon`;
-  if (process.env.PGHOST) {
-    url += `?host=${process.env.PGHOST}`;
+  const pgHost = process.env.PGHOST;
+  if (pgHost && pgHost.startsWith("/")) {
+    // Unixソケット: postgres://user@/dbname?host=/tmp
+    return `postgres://${user}@/hackathon?host=${encodeURIComponent(pgHost)}`;
   }
-  return url;
+  const host = pgHost || "localhost";
+  return `postgres://${user}@${host}:5432/hackathon`;
 };
 
 export default defineConfig({
