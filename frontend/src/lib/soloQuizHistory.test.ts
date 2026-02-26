@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   loadQuizHistory,
   appendQuizHistory,
-  markQuizHistoryResult,
+  saveQuizHistoryResult,
   applyIncorrectRetryResult,
   clearQuizHistory,
   type QuizPayload,
@@ -17,6 +17,7 @@ const mockQuizPayload = (id: string): QuizPayload => ({
   difficulty: "normal",
   questionCount: 5,
   createdAt: Date.now(),
+  mode: "code",
 });
 
 const mockResult = (correctCount: number, totalCount: number): QuizHistoryResult => ({
@@ -80,21 +81,22 @@ describe("soloQuizHistory", () => {
     });
   });
 
-  describe("markQuizHistoryResult", () => {
-    it("指定IDのクイズに結果を記録できる", () => {
-      appendQuizHistory(mockQuizPayload("quiz-1"));
+  describe("saveQuizHistoryResult", () => {
+    it("指定payloadのクイズに結果を記録できる", () => {
+      const payload = mockQuizPayload("quiz-1");
+      appendQuizHistory(payload);
       const result = mockResult(3, 5);
-      markQuizHistoryResult("quiz-1", result);
+      saveQuizHistoryResult(payload, result);
       const history = loadQuizHistory();
       expect(history[0].result?.correctCount).toBe(3);
       expect(history[0].result?.totalCount).toBe(5);
     });
 
-    it("存在しないIDへの記録は他のアイテムに影響しない", () => {
+    it("存在しないIDへの記録は既存アイテムに影響しない", () => {
       appendQuizHistory(mockQuizPayload("quiz-1"));
-      markQuizHistoryResult("non-existent", mockResult(5, 5));
+      saveQuizHistoryResult(mockQuizPayload("non-existent"), mockResult(5, 5));
       const history = loadQuizHistory();
-      expect(history[0].result).toBeUndefined();
+      expect(history.find((h) => h.id === "quiz-1")?.result).toBeUndefined();
     });
   });
 
@@ -103,7 +105,7 @@ describe("soloQuizHistory", () => {
       const payload = mockQuizPayload("quiz-source");
       appendQuizHistory(payload);
       // 最初の結果: 問題0は不正解、問題1は正解
-      markQuizHistoryResult("quiz-source", {
+      saveQuizHistoryResult(payload, {
         correctCount: 1,
         totalCount: 2,
         completedAt: Date.now(),
@@ -141,7 +143,7 @@ describe("soloQuizHistory", () => {
     it("元から正解だった問題は上書きされない", () => {
       const payload = mockQuizPayload("quiz-source");
       appendQuizHistory(payload);
-      markQuizHistoryResult("quiz-source", {
+      saveQuizHistoryResult(payload, {
         correctCount: 1,
         totalCount: 1,
         completedAt: Date.now(),
