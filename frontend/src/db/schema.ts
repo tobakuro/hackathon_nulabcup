@@ -12,6 +12,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { type AIAnalysisReport } from "../app/actions/github";
 
+export type BattleQuizSource = "my_repo" | "opponent_repo";
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   githubId: bigint("github_id", { mode: "number" }).unique().notNull(),
@@ -70,6 +72,38 @@ export const codeSessions = pgTable("code_sessions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
 });
+
+// 対戦で生成・出題されたクイズの履歴
+export const battleQuizzes = pgTable(
+  "battle_quizzes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // どの試合か（バックエンドのroom ID）
+    roomId: uuid("room_id").notNull(),
+    // 問題を生成したプレイヤーのユーザーID
+    generatedByUserId: uuid("generated_by_user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    // 問題のソース（自分のリポジトリか相手のリポジトリか）
+    source: varchar("source", { length: 20 }).notNull(), // "my_repo" | "opponent_repo"
+    // 問題が生成されたリポジトリ
+    repositoryId: uuid("repository_id")
+      .references(() => repositories.id, { onDelete: "set null" }),
+    // ターン番号（1-indexed）
+    turnIndex: integer("turn_index").notNull(),
+    // 問題内容
+    difficulty: varchar("difficulty", { length: 20 }).notNull(),
+    questionText: text("question_text").notNull(),
+    choices: jsonb("choices").$type<string[]>().notNull(),
+    correctAnswer: text("correct_answer").notNull(),
+    tips: text("tips").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    roomIdIdx: index("battle_quizzes_room_id_idx").on(table.roomId),
+    generatedByUserIdIdx: index("battle_quizzes_generated_by_user_id_idx").on(table.generatedByUserId),
+  }),
+);
 
 export const codeAnswers = pgTable(
   "code_answers",
