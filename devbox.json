@@ -41,6 +41,12 @@
         "GOOSE_DRIVER=postgres GOOSE_DBSTRING=\"host=${PGHOST} user=${USER} dbname=hackathon sslmode=disable\" GOOSE_MIGRATION_DIR=${DEVBOX_PROJECT_ROOT}/backend/db/migrations goose up && echo 'All goose migrations applied.'",
         "cd ${DEVBOX_PROJECT_ROOT}/frontend && npx drizzle-kit migrate && echo 'All drizzle migrations applied.'"
       ],
+      "db:reset": [
+        "echo 'データベースをリセットしています...'",
+        "psql -h \"$PGHOST\" -d postgres -c \"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'hackathon' AND pid <> pg_backend_pid();\" > /dev/null 2>&1 || true",
+        "dropdb -h \"$PGHOST\" --if-exists hackathon && echo 'Dropped database: hackathon'",
+        "devbox run db:setup"
+      ],
       "backend:dev": [
         "cd backend && air"
       ],

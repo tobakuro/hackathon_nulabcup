@@ -1,4 +1,4 @@
-CREATE TABLE "users" (
+CREATE TABLE IF NOT EXISTS "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"github_id" bigint NOT NULL,
 	"github_login" varchar(255) NOT NULL,
@@ -10,4 +10,4 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_github_id_unique" UNIQUE("github_id")
 );
 --> statement-breakpoint
-CREATE INDEX "repository_files_repository_id_idx" ON "repository_files" USING btree ("repository_id");
+CREATE INDEX IF NOT EXISTS "repository_files_repository_id_idx" ON "repository_files" USING btree ("repository_id");
